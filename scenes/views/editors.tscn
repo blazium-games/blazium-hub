@@ -1,0 +1,74 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gdscript/editors_view.gd" id="1"]
+
+[node name="EditorsView" type="VBoxContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Header" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "Editors"
+
+[node name="ChannelOption" type="OptionButton" parent="Header"]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="RefreshEditorsBtn" type="Button" parent="Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Refresh"
+
+[node name="Split" type="HSplitContainer" parent="."]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="InstalledCol" type="VBoxContainer" parent="Split"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="InstalledLabel" type="Label" parent="Split/InstalledCol"]
+layout_mode = 2
+text = "Installed (blazium-cli)"
+
+[node name="InstalledList" type="ItemList" parent="Split/InstalledCol"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="UninstallBtn" type="Button" parent="Split/InstalledCol"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Uninstall selected"
+
+[node name="AvailableCol" type="VBoxContainer" parent="Split"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AvailableLabel" type="Label" parent="Split/AvailableCol"]
+layout_mode = 2
+text = "Available (cdn.blazium.app)"
+
+[node name="AvailableList" type="ItemList" parent="Split/AvailableCol"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="InstallBtn" type="Button" parent="Split/AvailableCol"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Install selected"
+
+[node name="EditorsStatus" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""

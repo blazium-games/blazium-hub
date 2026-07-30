@@ -1,0 +1,9 @@
+{
+	"dirs": ["res://tests/gdscript"],
+	"prefix": "test_",
+	"suffix": ".gd",
+	"include_subdirs": true,
+	"inner_class": "",
+	"unit_test_name": "",
+	"hide_orphans": false
+}

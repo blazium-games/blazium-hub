@@ -1,0 +1,33 @@
+# Blazium / Godot
+.godot/
+.import/
+*.translation
+export_presets.cfg.bak
+
+# Build / packaging outputs
+build/
+packaging/windows/Output/
+*.exe
+*.pck
+*.zip
+*.deb
+*.AppImage
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.vscode/
+.idea/
+
+# Local secrets
+.env
+production.env
+*.pem
+
+# Engine checkout / local scons (CI uses a separate workspace path)
+.ci/engine/
+.ci/ccache/
+.ci/editor/
+.ci_aw_*.txt

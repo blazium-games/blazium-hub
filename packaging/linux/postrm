@@ -1,0 +1,29 @@
+#!/bin/sh
+set -e
+# Full undo: remove install root, PATH profile, /usr/bin links, and user Blazium data.
+rm -f /usr/bin/blazium-hub /usr/bin/blazium-cli /usr/bin/blazium
+rm -f /etc/profile.d/blazium.sh
+rm -rf /opt/blazium
+
+# Wipe data for the user who invoked package removal (when available).
+# Other users' homes are left for admin cleanup.
+wipe_user() {
+  uhome="$1"
+  [ -n "$uhome" ] || return 0
+  [ -d "$uhome" ] || return 0
+  rm -rf "$uhome/.config/blazium" "$uhome/.local/share/blazium"
+  rm -rf "$uhome/.local/share/godot/app_userdata/Blazium Hub" 2>/dev/null || true
+  rm -rf "$uhome/.config/godot/app_userdata/Blazium Hub" 2>/dev/null || true
+}
+
+if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
+  wipe_user "$(getent passwd "$SUDO_USER" | cut -d: -f6)"
+fi
+if [ -n "${HOME:-}" ] && [ "$HOME" != "/root" ]; then
+  wipe_user "$HOME"
+fi
+
+if command -v update-desktop-database >/dev/null 2>&1; then
+  update-desktop-database -q /usr/share/applications || true
+fi
+exit 0

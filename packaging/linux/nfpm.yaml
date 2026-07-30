@@ -1,0 +1,38 @@
+name: blazium-hub
+arch: amd64
+platform: linux
+version: ${VERSION}
+section: devel
+priority: optional
+maintainer: Blazium Games <support@blazium.app>
+description: |
+  Blazium Hub desktop application with bundled blazium-cli.
+  Sets BLAZIUM=/opt/blazium and registers the blazium:// URI scheme.
+vendor: Blazium Games
+homepage: https://blazium.app
+license: MIT
+contents:
+  - src: ../../build/package/linux/bin/blazium-hub
+    dst: /opt/blazium/bin/blazium-hub
+    file_info:
+      mode: 0755
+  - src: ../../build/package/linux/bin/blazium-cli
+    dst: /opt/blazium/bin/blazium-cli
+    file_info:
+      mode: 0755
+  - src: ../../build/package/linux/bin/blazium
+    dst: /opt/blazium/bin/blazium
+    file_info:
+      mode: 0755
+  - src: blazium.sh
+    dst: /etc/profile.d/blazium.sh
+    file_info:
+      mode: 0644
+  - src: blazium-hub.desktop
+    dst: /usr/share/applications/blazium-hub.desktop
+  - src: ../../assets/icons/icon.svg
+    dst: /usr/share/icons/hicolor/scalable/apps/blazium-hub.svg
+scripts:
+  postinstall: postinst
+  preremove: prerm
+  postremove: postrm

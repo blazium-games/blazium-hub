@@ -1,0 +1,53 @@
+; Engine configuration file.
+config_version=5
+
+[application]
+
+config/name="Blazium Hub"
+config/version="0.1.0"
+config/description="Desktop Hub for Blazium editors and projects (CDN + blazium-cli)."
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.3", "GL Compatibility")
+run/low_processor_mode=true
+config/icon="res://assets/icons/icon.svg"
+config/windows_native_icon="res://assets/icons/icon.svg"
+
+[autoload]
+
+HubSettings="*res://autoload/hub_settings.gd"
+HubCli="*res://scripts/gdscript/hub_cli.gd"
+CdnClient="*res://scripts/gdscript/cdn_client.gd"
+HubState="*res://scripts/gdscript/hub_state.gd"
+UriRouter="*res://scripts/gdscript/uri_router.gd"
+SingleInstance="*res://autoload/single_instance.gd"
+SystemTray="*res://autoload/system_tray.gd"
+
+[display]
+
+window/size/viewport_width=1100
+window/size/viewport_height=720
+window/size/min_viewport_width=800
+window/size/min_viewport_height=520
+window/vsync/vsync_mode=1
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+renderer/gl_compatibility/driver.windows="opengl3"
+textures/canvas_textures/default_texture_filter=0
+anti_aliasing/quality/msaa_2d=0
+anti_aliasing/quality/msaa_3d=0
+anti_aliasing/quality/screen_space_aa=0
+anti_aliasing/quality/use_taa=false
+anti_aliasing/quality/use_debanding=false
+lights_and_shadows/positional_shadow/soft_shadow_filter_quality=0
+environment/defaults/default_clear_color=Color(0.12, 0.13, 0.15, 1)
+environment/glow/enabled=false
+environment/volumetric_fog/enabled=false
+occlusion_culling/use_occlusion_culling=false
+
+[xr]
+
+openxr/enabled=false
+shaders/enabled=false

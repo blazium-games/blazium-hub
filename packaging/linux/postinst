@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+BLAZIUM_ROOT=/opt/blazium
+mkdir -p "$BLAZIUM_ROOT/bin"
+# Ensure blazium → blazium-cli (nfpm may pack a copy; force symlink).
+if [ -f "$BLAZIUM_ROOT/bin/blazium-cli" ]; then
+  ln -sfn blazium-cli "$BLAZIUM_ROOT/bin/blazium"
+fi
+ln -sfn "$BLAZIUM_ROOT/bin/blazium-hub" /usr/bin/blazium-hub
+ln -sfn "$BLAZIUM_ROOT/bin/blazium-cli" /usr/bin/blazium-cli
+ln -sfn "$BLAZIUM_ROOT/bin/blazium" /usr/bin/blazium
+if command -v update-desktop-database >/dev/null 2>&1; then
+  update-desktop-database -q /usr/share/applications || true
+fi
+if command -v xdg-mime >/dev/null 2>&1; then
+  xdg-mime default blazium-hub.desktop x-scheme-handler/blazium || true
+fi
+exit 0

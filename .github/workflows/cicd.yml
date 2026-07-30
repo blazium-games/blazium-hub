@@ -1,0 +1,730 @@
+name: Build Sign and Publish Hub
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: hub-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  # Oldest still-supported GitHub-hosted images (not *-latest).
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  HUB_AUTOWORK: "1"
+
+jobs:
+  autowork:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Blazium editor (release, with Autowork + Luau)
+        id: editor
+        run: |
+          set -euo pipefail
+          LATEST="$(curl -fsSL https://cdn.blazium.app/catalog/versions/release/latest.json)"
+          VER="$(printf '%s' "$LATEST" | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])')"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          EDITORS_URL="https://cdn.blazium.app/release/${VER}/editors.json"
+          ZIP_URL="$(curl -fsSL "$EDITORS_URL" | python3 -c '
+          import json,sys
+          for e in json.load(sys.stdin):
+              name=e.get("filename","")
+              if name.endswith("linux.x86_64.zip") and ".mono." not in name:
+                  print(e["download_url"]); break
+          else:
+              raise SystemExit("linux editor zip not found")
+          ')"
+          mkdir -p .ci/editor
+          curl -fsSL "$ZIP_URL" -o .ci/editor/blazium.zip
+          python3 - <<'PY'
+          import zipfile
+          zipfile.ZipFile(".ci/editor/blazium.zip").extractall(".ci/editor/out")
+          PY
+          BIN="$(find .ci/editor/out -type f -name 'blazium*' -perm -111 | head -n1 || true)"
+          if [ -z "$BIN" ]; then
+            BIN="$(find .ci/editor/out -type f \( -name 'Blazium*' -o -name 'blazium*' \) | head -n1)"
+          fi
+          test -n "$BIN"
+          chmod +x "$BIN"
+          PREFERRED="$(find .ci/editor/out -type f -name 'blazium*x86_64' ! -name '*.console' | head -n1 || true)"
+          if [ -n "$PREFERRED" ]; then
+            BIN="$PREFERRED"
+            chmod +x "$BIN"
+          fi
+          echo "bin=$BIN" >> "$GITHUB_OUTPUT"
+          echo "Using $BIN (Blazium $VER)"
+          "$BIN" --version || true
+
+      - name: Run Autowork (GDScript + Luau)
+        run: |
+          set -euo pipefail
+          "${{ steps.editor.outputs.bin }}" --headless --path "$GITHUB_WORKSPACE" -s run_tests.gd
+
+  build-engine-linux:
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
+    needs: [autowork]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+    outputs:
+      version: ${{ steps.hubver.outputs.version }}
+      blazium_ref: ${{ steps.ref.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Hub version
+        id: hubver
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            V="${GITHUB_REF#refs/tags/v}"
+          else
+            V="$(tr -d '[:space:]' < VERSION)"
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Read BLAZIUM_REF
+        id: ref
+        run: |
+          REF="$(tr -d '[:space:]' < ci/BLAZIUM_REF)"
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+          echo "Building blazium @$REF"
+
+      - name: Checkout blazium engine
+        uses: actions/checkout@v4
+        with:
+          repository: blazium-games/blazium
+          ref: ${{ steps.ref.outputs.ref }}
+          path: .ci/engine
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc || true
+          df -h
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential scons pkg-config libx11-dev libxcursor-dev libxinerama-dev \
+            libgl1-mesa-dev libglu1-mesa-dev libasound2-dev libpulse-dev libudev-dev \
+            libxi-dev libxrandr-dev yasm ccache patchelf
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install SCons
+        run: pip install scons==4.7.0
+
+      - name: Load Hub SCons flags
+        run: |
+          set -a
+          # shellcheck disable=SC1091
+          source ci/hub_scons.env
+          set +a
+          mkdir -p .ci/flags
+          printf '%s' "$HUB_SCONS_COMMON" > .ci/flags/common.txt
+          printf '%s' "$HUB_SCONS_TEMPLATE" > .ci/flags/template.txt
+          echo "COMMON: $(cat .ci/flags/common.txt)"
+          echo "TEMPLATE EXTRA: $(cat .ci/flags/template.txt)"
+
+      - name: ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: hub-linux-${{ steps.ref.outputs.ref }}-${{ hashFiles('ci/hub_scons.env') }}
+          max-size: 2G
+
+      - name: Build Linux editor (stripped, no disable_3d)
+        working-directory: .ci/engine
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC2046
+          scons -j"$(nproc)" platform=linuxbsd target=editor arch=x86_64 \
+            $(cat ../flags/common.txt) \
+            compiledb=no verbose=yes
+          ls -lh bin/
+          find bin -type f -name 'blazium*editor*' | tee /tmp/editor_bin.txt
+          test -s /tmp/editor_bin.txt
+
+      - name: Build Linux template_release (disable_3d)
+        working-directory: .ci/engine
+        run: |
+          set -euo pipefail
+          # shellcheck disable=SC2046
+          scons -j"$(nproc)" platform=linuxbsd target=template_release arch=x86_64 \
+            $(cat ../flags/common.txt) $(cat ../flags/template.txt) \
+            compiledb=no verbose=yes
+          ls -lh bin/
+          find bin -type f -name 'blazium*template_release*' | tee /tmp/tpl_bin.txt
+          test -s /tmp/tpl_bin.txt
+          echo "### Linux template size" >> "$GITHUB_STEP_SUMMARY"
+          du -h bin/*template_release* >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Stage artifacts
+        run: |
+          mkdir -p .ci/out/linux
+          cp "$(find .ci/engine/bin -type f -name 'blazium*editor*' | head -n1)" .ci/out/linux/editor
+          cp "$(find .ci/engine/bin -type f -name 'blazium*template_release*' | head -n1)" .ci/out/linux/template_release
+          chmod +x .ci/out/linux/editor .ci/out/linux/template_release
+          ls -lh .ci/out/linux/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: engine-linux
+          path: .ci/out/linux/
+          retention-days: 3
+
+  build-engine-windows:
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
+    needs: [autowork]
+    runs-on: windows-2022
+    timeout-minutes: 360
+    outputs:
+      version: ${{ steps.hubver.outputs.version }}
+      blazium_ref: ${{ steps.ref.outputs.ref }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Hub version
+        id: hubver
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            V="${GITHUB_REF#refs/tags/v}"
+          else
+            V="$(tr -d '[:space:]' < VERSION)"
+          fi
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Read BLAZIUM_REF
+        id: ref
+        shell: bash
+        run: |
+          REF="$(tr -d '[:space:]' < ci/BLAZIUM_REF)"
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout blazium engine
+        uses: actions/checkout@v4
+        with:
+          repository: blazium-games/blazium
+          ref: ${{ steps.ref.outputs.ref }}
+          path: .ci/engine
+          submodules: recursive
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install SCons
+        shell: bash
+        run: pip install scons==4.7.0
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Load Hub SCons flags
+        shell: bash
+        run: |
+          set -a
+          source ci/hub_scons.env
+          set +a
+          mkdir -p .ci/flags
+          printf '%s' "$HUB_SCONS_COMMON" > .ci/flags/common.txt
+          printf '%s' "$HUB_SCONS_TEMPLATE" > .ci/flags/template.txt
+
+      - name: Build Windows editor (stripped, no disable_3d)
+        working-directory: .ci/engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          JOBS="${NUMBER_OF_PROCESSORS:-8}"
+          # shellcheck disable=SC2046
+          scons -j"$JOBS" platform=windows target=editor arch=x86_64 \
+            $(cat ../flags/common.txt) \
+            compiledb=no verbose=yes
+          find bin -type f \( -name 'blazium*editor*.exe' -o -name '*editor*.exe' \) | tee /tmp/editor_bin.txt
+          test -s /tmp/editor_bin.txt
+
+      - name: Build Windows template_release (disable_3d)
+        working-directory: .ci/engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          JOBS="${NUMBER_OF_PROCESSORS:-8}"
+          # shellcheck disable=SC2046
+          scons -j"$JOBS" platform=windows target=template_release arch=x86_64 \
+            $(cat ../flags/common.txt) $(cat ../flags/template.txt) \
+            compiledb=no verbose=yes
+          find bin -type f \( -name 'blazium*template_release*.exe' -o -name '*template_release*.exe' \) | tee /tmp/tpl_bin.txt
+          test -s /tmp/tpl_bin.txt
+          echo "### Windows template size" >> "$GITHUB_STEP_SUMMARY"
+          ls -lh bin/*template_release* >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Stage artifacts
+        shell: bash
+        run: |
+          mkdir -p .ci/out/windows
+          cp "$(find .ci/engine/bin -type f \( -name 'blazium*editor*.exe' -o -name '*editor*.exe' \) | head -n1)" .ci/out/windows/editor.exe
+          cp "$(find .ci/engine/bin -type f \( -name 'blazium*template_release*.exe' -o -name '*template_release*.exe' \) | head -n1)" .ci/out/windows/template_release.exe
+          ls -lh .ci/out/windows/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: engine-windows
+          path: .ci/out/windows/
+          retention-days: 3
+
+  export-linux:
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
+    needs: build-engine-linux
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ needs.build-engine-linux.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: engine-linux
+          path: .ci/out/linux
+
+      - name: Materialize production.env
+        env:
+          PRODUCTION_ENV: ${{ secrets.PRODUCTION_ENV }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PRODUCTION_ENV:-}" ]; then
+            echo "PRODUCTION_ENV GitHub secret is required" >&2
+            exit 1
+          fi
+          printf '%s\n' "$PRODUCTION_ENV" > production.env
+          set -a
+          # shellcheck disable=SC1091
+          source production.env
+          set +a
+          if [ -z "${SCRIPT_ENCRYPTION_KEY:-}" ]; then
+            echo "SCRIPT_ENCRYPTION_KEY missing in production.env" >&2
+            exit 1
+          fi
+          echo "SCRIPT_ENCRYPTION_KEY=$SCRIPT_ENCRYPTION_KEY" >> "$GITHUB_ENV"
+          # Godot also accepts GODOT_SCRIPT_ENCRYPTION_KEY
+          echo "GODOT_SCRIPT_ENCRYPTION_KEY=$SCRIPT_ENCRYPTION_KEY" >> "$GITHUB_ENV"
+
+      - name: Patch export_presets custom template
+        run: |
+          set -euo pipefail
+          chmod +x .ci/out/linux/editor .ci/out/linux/template_release
+          TPL="$(pwd)/.ci/out/linux/template_release"
+          # Point both release (and unused debug) at release template — we do not ship template_debug.
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("export_presets.cfg")
+          text = p.read_text(encoding="utf-8")
+          tpl = Path(".ci/out/linux/template_release").resolve().as_posix()
+          out = []
+          for line in text.splitlines():
+              if line.startswith("custom_template/release="):
+                  out.append(f'custom_template/release="{tpl}"')
+              elif line.startswith("custom_template/debug="):
+                  out.append(f'custom_template/debug="{tpl}"')
+              else:
+                  out.append(line)
+          p.write_text("\n".join(out) + "\n", encoding="utf-8")
+          print(p.read_text(encoding="utf-8"))
+          PY
+
+      - name: Export Linux Hub
+        run: |
+          set -euo pipefail
+          mkdir -p build/linux
+          .ci/out/linux/editor --headless --path . --export-release "Linux/X11" build/linux/blazium-hub.x86_64
+          chmod +x build/linux/blazium-hub.x86_64
+          echo "### Hub Linux binary" >> "$GITHUB_STEP_SUMMARY"
+          du -h build/linux/blazium-hub.x86_64 >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fetch latest blazium-cli + stage package tree
+        run: |
+          set -euo pipefail
+          mkdir -p build/package/linux/bin
+          python3 ci/fetch_latest_cli.py --platform linux --arch x86_64 --out build/package/linux/bin/blazium-cli
+          cp build/linux/blazium-hub.x86_64 build/package/linux/bin/blazium-hub
+          chmod +x build/package/linux/bin/blazium-hub build/package/linux/bin/blazium-cli
+          # Thin shim: `blazium` → blazium-cli (postinst also force-symlinks).
+          printf '%s\n' '#!/bin/sh' 'exec "$(dirname "$0")/blazium-cli" "$@"' > build/package/linux/bin/blazium
+          chmod +x build/package/linux/bin/blazium
+          ls -lh build/package/linux/bin/
+
+      - name: Install nfpm
+        run: |
+          curl -sL https://github.com/goreleaser/nfpm/releases/download/v2.41.1/nfpm_2.41.1_Linux_x86_64.tar.gz | tar -xz
+          sudo mv nfpm /usr/local/bin/
+
+      - name: Build .deb
+        run: |
+          set -euo pipefail
+          export VERSION=${{ needs.build-engine-linux.outputs.version }}
+          mkdir -p packaging/linux/dist
+          (cd packaging/linux && VERSION="$VERSION" nfpm package --packager deb --target dist/)
+          DEB=$(ls packaging/linux/dist/*.deb | head -n1)
+          echo "DEB_PATH=$DEB" >> "$GITHUB_ENV"
+          BASE=$(basename "$DEB")
+          echo "DEB_NAME=$BASE" >> "$GITHUB_ENV"
+
+      - name: Install/uninstall smoke (dpkg)
+        run: |
+          set -euo pipefail
+          chmod +x ci/smoke_install_linux.sh
+          ./ci/smoke_install_linux.sh "$DEB_PATH"
+
+      - name: Import GPG and sign
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -n "${GPG_PRIVATE_KEY:-}" ]; then
+            echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+            gpg --batch --yes --output "${DEB_PATH}.sig" --detach-sign "$DEB_PATH"
+          fi
+
+      - name: Digest
+        id: digest
+        run: |
+          SHA=$(sha256sum "$DEB_PATH" | awk '{print $1}')
+          SIZE=$(stat -c%s "$DEB_PATH")
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+          mkdir -p "upload/linux/${{ needs.build-engine-linux.outputs.version }}"
+          cp "$DEB_PATH" "upload/linux/${{ needs.build-engine-linux.outputs.version }}/"
+          if [ -f "${DEB_PATH}.sig" ]; then
+            cp "${DEB_PATH}.sig" "upload/linux/${{ needs.build-engine-linux.outputs.version }}/"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: upload/linux/**
+
+      - uses: BetaHuhn/do-spaces-action@v2
+        with:
+          access_key: ${{ secrets.DO_ACCESS_KEY }}
+          secret_key: ${{ secrets.DO_SECRET_KEY }}
+          space_name: ${{ secrets.DO_SPACE_NAME }}
+          space_region: ${{ secrets.DO_SPACE_REGION }}
+          source: upload/linux/${{ needs.build-engine-linux.outputs.version }}/${{ env.DEB_NAME }}
+          out_dir: hub/linux/${{ needs.build-engine-linux.outputs.version }}
+
+      - name: Register with Cerebro
+        env:
+          URL: https://cdn.blazium.app/hub/linux/${{ needs.build-engine-linux.outputs.version }}/${{ env.DEB_NAME }}
+        run: |
+          SIG_URL="${URL}.sig"
+          curl -s -X POST "${{ secrets.CEREBRO_URL }}/api/v1/tools" \
+            -H "Content-Type: application/json" \
+            -H "BLAZIUM_AUTH: ${{ secrets.BLAZIUM_AUTH }}" \
+            -d "$(cat <<EOF
+          {
+            "name": "Blazium Hub",
+            "type": "hub",
+            "version": "${{ needs.build-engine-linux.outputs.version }}",
+            "os": "linux",
+            "arch": "x86_64",
+            "file": "$URL",
+            "sig": "$SIG_URL",
+            "sha256": "${{ steps.digest.outputs.sha256 }}",
+            "size": ${{ steps.digest.outputs.size }},
+            "signing": "gpg",
+            "released_on": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          }
+          EOF
+          )"
+
+      - name: Scrub production.env
+        if: always()
+        run: rm -f production.env
+
+  export-windows:
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
+    needs: build-engine-windows
+    runs-on: windows-2022
+    outputs:
+      version: ${{ needs.build-engine-windows.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: engine-windows
+          path: .ci/out/windows
+
+      - name: Materialize production.env
+        shell: bash
+        env:
+          PRODUCTION_ENV: ${{ secrets.PRODUCTION_ENV }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PRODUCTION_ENV:-}" ]; then
+            echo "PRODUCTION_ENV GitHub secret is required" >&2
+            exit 1
+          fi
+          printf '%s\n' "$PRODUCTION_ENV" > production.env
+          set -a
+          source production.env
+          set +a
+          test -n "${SCRIPT_ENCRYPTION_KEY:-}"
+          echo "SCRIPT_ENCRYPTION_KEY=$SCRIPT_ENCRYPTION_KEY" >> "$GITHUB_ENV"
+          echo "GODOT_SCRIPT_ENCRYPTION_KEY=$SCRIPT_ENCRYPTION_KEY" >> "$GITHUB_ENV"
+
+      - name: Patch export_presets custom template
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("export_presets.cfg")
+          text = p.read_text(encoding="utf-8")
+          tpl = Path(".ci/out/windows/template_release.exe").resolve().as_posix()
+          out = []
+          for line in text.splitlines():
+              if line.startswith("custom_template/release="):
+                  out.append(f'custom_template/release="{tpl}"')
+              elif line.startswith("custom_template/debug="):
+                  out.append(f'custom_template/debug="{tpl}"')
+              else:
+                  out.append(line)
+          p.write_text("\n".join(out) + "\n", encoding="utf-8")
+          PY
+
+      - name: Export Windows Hub
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/windows
+          .ci/out/windows/editor.exe --headless --path . --export-release "Windows Desktop" build/windows/BlaziumHub.exe
+          test -f build/windows/BlaziumHub.exe
+          echo "### Hub Windows binary" >> "$GITHUB_STEP_SUMMARY"
+          ls -lh build/windows/BlaziumHub.exe >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fetch latest blazium-cli + stage package tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/package/windows/Hub
+          # Copy Hub export (exe + any sidecar data next to it)
+          cp -a build/windows/. build/package/windows/Hub/
+          python3 ci/fetch_latest_cli.py --platform windows --arch x86_64 --out build/package/windows/blazium-cli.exe
+          cp packaging/windows/blazium.cmd build/package/windows/blazium.cmd
+          cp packaging/windows/blazium-hub.cmd build/package/windows/blazium-hub.cmd
+          ls -lh build/package/windows/ build/package/windows/Hub/
+
+      - uses: bioblaze/sslcom-code-signer@v5
+        name: Sign BlaziumHub.exe
+        continue-on-error: true
+        with:
+          command: sign
+          username: ${{ secrets.ES_USERNAME }}
+          password: ${{ secrets.ES_PASSWORD }}
+          credential_id: ${{ secrets.CREDENTIAL_ID }}
+          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
+          file_path: ./build/package/windows/Hub/BlaziumHub.exe
+          output_path: ./build/package/windows/Hub
+          environment_name: PROD
+
+      - uses: bioblaze/sslcom-code-signer@v5
+        name: Sign blazium-cli.exe
+        continue-on-error: true
+        with:
+          command: sign
+          username: ${{ secrets.ES_USERNAME }}
+          password: ${{ secrets.ES_PASSWORD }}
+          credential_id: ${{ secrets.CREDENTIAL_ID }}
+          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
+          file_path: ./build/package/windows/blazium-cli.exe
+          output_path: ./build/package/windows
+          environment_name: PROD
+
+      - name: Install Inno Setup
+        shell: powershell
+        run: |
+          choco install innosetup -y --no-progress
+          echo "C:\Program Files (x86)\Inno Setup 6" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Build installer (iscc)
+        shell: bash
+        run: |
+          set -euo pipefail
+          VER="${{ needs.build-engine-windows.outputs.version }}"
+          "C:/Program Files (x86)/Inno Setup 6/ISCC.exe" \
+            "/DMyAppVersion=${VER}" \
+            "/DMyAppSourceDir=$(pwd)/build/package/windows" \
+            packaging/windows/blazium-hub.iss
+          SETUP="packaging/windows/Output/BlaziumHub-Setup-${VER}.exe"
+          test -f "$SETUP"
+          echo "SETUP_PATH=$SETUP" >> "$GITHUB_ENV"
+
+      - name: Digest installer
+        id: digest
+        shell: bash
+        run: |
+          SHA=$(sha256sum "$SETUP_PATH" | awk '{print $1}')
+          SIZE=$(wc -c < "$SETUP_PATH" | tr -d ' ')
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+
+      - uses: bioblaze/sslcom-code-signer@v5
+        name: Sign installer
+        continue-on-error: true
+        with:
+          command: sign
+          username: ${{ secrets.ES_USERNAME }}
+          password: ${{ secrets.ES_PASSWORD }}
+          credential_id: ${{ secrets.CREDENTIAL_ID }}
+          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
+          file_path: ${{ env.SETUP_PATH }}
+          output_path: ./packaging/windows/Output
+          environment_name: PROD
+
+      - name: Install/uninstall smoke (custom DIR)
+        shell: powershell
+        run: |
+          ./ci/smoke_install_windows.ps1 -SetupPath "$env:SETUP_PATH"
+
+      - name: Stage upload
+        shell: bash
+        run: |
+          VER="${{ needs.build-engine-windows.outputs.version }}"
+          mkdir -p "upload/windows/${VER}"
+          cp "$SETUP_PATH" "upload/windows/${VER}/"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: upload/windows/**
+
+      - uses: BetaHuhn/do-spaces-action@v2
+        with:
+          access_key: ${{ secrets.DO_ACCESS_KEY }}
+          secret_key: ${{ secrets.DO_SECRET_KEY }}
+          space_name: ${{ secrets.DO_SPACE_NAME }}
+          space_region: ${{ secrets.DO_SPACE_REGION }}
+          source: upload/windows/${{ needs.build-engine-windows.outputs.version }}/BlaziumHub-Setup-${{ needs.build-engine-windows.outputs.version }}.exe
+          out_dir: hub/windows/${{ needs.build-engine-windows.outputs.version }}
+
+      - name: Register with Cerebro
+        shell: bash
+        env:
+          URL: https://cdn.blazium.app/hub/windows/${{ needs.build-engine-windows.outputs.version }}/BlaziumHub-Setup-${{ needs.build-engine-windows.outputs.version }}.exe
+        run: |
+          curl -s -X POST "${{ secrets.CEREBRO_URL }}/api/v1/tools" \
+            -H "Content-Type: application/json" \
+            -H "BLAZIUM_AUTH: ${{ secrets.BLAZIUM_AUTH }}" \
+            -d "$(cat <<EOF
+          {
+            "name": "Blazium Hub",
+            "type": "hub",
+            "version": "${{ needs.build-engine-windows.outputs.version }}",
+            "os": "windows",
+            "arch": "x86_64",
+            "file": "$URL",
+            "sig": "",
+            "sha256": "${{ steps.digest.outputs.sha256 }}",
+            "size": ${{ steps.digest.outputs.size }},
+            "signing": "sslcom",
+            "released_on": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          }
+          EOF
+          )"
+
+      - name: Scrub production.env
+        if: always()
+        shell: bash
+        run: rm -f production.env
+
+  publish-catalog:
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
+    needs: [export-windows, export-linux]
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ needs.export-linux.outputs.version }}
+    steps:
+      - name: Republish Hub catalog via Cerebro
+        run: |
+          set -euo pipefail
+          curl -fsS -X POST "${{ secrets.CEREBRO_URL }}/api/v1/cdn/publish" \
+            -H "Content-Type: application/json" \
+            -H "BLAZIUM_AUTH: ${{ secrets.BLAZIUM_AUTH }}" \
+            -d '{"scope":"hub"}'
+
+  github-release:
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
+    needs: [publish-catalog, export-linux, export-windows]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: ver
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            V="${GITHUB_REF#refs/tags/v}"
+          else
+            V="${{ needs.publish-catalog.outputs.version }}"
+          fi
+          test -n "$V"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "tag=v$V" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-deb
+          path: artifacts/linux
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-installer
+          path: artifacts/windows
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VER: ${{ steps.ver.outputs.version }}
+          TAG: ${{ steps.ver.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mapfile -t FILES < <(find artifacts -type f \( -name '*.exe' -o -name '*.deb' -o -name '*.sig' \) | sort)
+          test "${#FILES[@]}" -ge 2
+          NOTES="Blazium Hub ${VER}
+
+          Installers also on CDN:
+          - https://cdn.blazium.app/hub/windows/${VER}/
+          - https://cdn.blazium.app/hub/linux/${VER}/
+
+          Silent Windows (any directory):
+          \`\`\`
+          BlaziumHub-Setup-${VER}.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=\"D:\\\\Tools\\\\Blazium\"
+          \`\`\`
+          "
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${FILES[@]}" --clobber
+          else
+            gh release create "$TAG" "${FILES[@]}" \
+              --title "Blazium Hub ${VER}" \
+              --notes "$NOTES" \
+              --target "$GITHUB_SHA" \
+              --latest
+          fi
+          gh release view "$TAG"

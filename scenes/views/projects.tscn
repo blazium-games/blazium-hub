@@ -1,0 +1,52 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gdscript/projects_view.gd" id="1"]
+
+[node name="ProjectsView" type="VBoxContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Header" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "Projects"
+
+[node name="AddProjectBtn" type="Button" parent="Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Add folder"
+
+[node name="RemoveProjectBtn" type="Button" parent="Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Remove"
+
+[node name="OpenProjectBtn" type="Button" parent="Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Open"
+
+[node name="ProjectList" type="ItemList" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ProjectsStatus" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
+
+[node name="ProjectFolderDialog" type="FileDialog" parent="."]
+unique_name_in_owner = true
+title = "Select project folder"
+access = 2
+use_native_dialog = true
+file_mode = 2
