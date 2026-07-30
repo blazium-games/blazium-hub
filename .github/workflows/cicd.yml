@@ -138,16 +138,45 @@ jobs:
           echo "COMMON: $(cat .ci/flags/common.txt)"
           echo "TEMPLATE EXTRA: $(cat .ci/flags/template.txt)"
 
+      - name: Materialize encryption key for templates
+        env:
+          PRODUCTION_ENV: ${{ secrets.PRODUCTION_ENV }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PRODUCTION_ENV:-}" ]; then
+            echo "PRODUCTION_ENV GitHub secret is required" >&2
+            exit 1
+          fi
+          printf '%s\n' "$PRODUCTION_ENV" > production.env
+          set -a
+          # shellcheck disable=SC1091
+          source production.env
+          set +a
+          if [ -z "${SCRIPT_ENCRYPTION_KEY:-}" ]; then
+            echo "SCRIPT_ENCRYPTION_KEY missing in production.env" >&2
+            exit 1
+          fi
+          if [[ ! "$SCRIPT_ENCRYPTION_KEY" =~ ^[0-9a-fA-F]{64}$ ]]; then
+            echo "SCRIPT_ENCRYPTION_KEY must be exactly 64 hexadecimal characters" >&2
+            exit 1
+          fi
+          umask 077
+          printf '%s' "$SCRIPT_ENCRYPTION_KEY" > .ci/script_aes256.key
+          echo "ENC_KEY_HASH=$(printf '%s' "$SCRIPT_ENCRYPTION_KEY" | sha256sum | awk '{print substr($1,1,16)}')" >> "$GITHUB_ENV"
+          echo "Encryption key materialized for template_release (SCRIPT_AES256_ENCRYPTION_KEY)"
+
       - name: ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: hub-linux-${{ steps.ref.outputs.ref }}-${{ hashFiles('ci/hub_scons.env') }}
+          key: hub-linux-${{ steps.ref.outputs.ref }}-${{ hashFiles('ci/hub_scons.env') }}-${{ env.ENC_KEY_HASH }}
           max-size: 2G
 
       - name: Build Linux editor (stripped, no disable_3d)
         working-directory: .ci/engine
         run: |
           set -euo pipefail
+          # Editor is export-only tooling; do not bake SCRIPT_AES256 into it.
+          unset SCRIPT_AES256_ENCRYPTION_KEY || true
           # shellcheck disable=SC2046
           scons -j"$(nproc)" platform=linuxbsd target=editor arch=x86_64 \
             $(cat ../flags/common.txt) \
@@ -160,6 +189,10 @@ jobs:
         working-directory: .ci/engine
         run: |
           set -euo pipefail
+          # Bake AES key into template (Godot/Blazium core/SCsub).
+          export SCRIPT_AES256_ENCRYPTION_KEY
+          SCRIPT_AES256_ENCRYPTION_KEY="$(tr -d '[:space:]' < "$GITHUB_WORKSPACE/.ci/script_aes256.key")"
+          test -n "$SCRIPT_AES256_ENCRYPTION_KEY"
           # shellcheck disable=SC2046
           scons -j"$(nproc)" platform=linuxbsd target=template_release arch=x86_64 \
             $(cat ../flags/common.txt) $(cat ../flags/template.txt) \
@@ -183,6 +216,10 @@ jobs:
           name: engine-linux
           path: .ci/out/linux/
           retention-days: 3
+
+      - name: Scrub encryption key material
+        if: always()
+        run: rm -f production.env .ci/script_aes256.key
 
   build-engine-windows:
     if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
@@ -244,11 +281,41 @@ jobs:
           printf '%s' "$HUB_SCONS_COMMON" > .ci/flags/common.txt
           printf '%s' "$HUB_SCONS_TEMPLATE" > .ci/flags/template.txt
 
+      - name: Materialize encryption key for templates
+        shell: bash
+        env:
+          PRODUCTION_ENV: ${{ secrets.PRODUCTION_ENV }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PRODUCTION_ENV:-}" ]; then
+            echo "PRODUCTION_ENV GitHub secret is required" >&2
+            exit 1
+          fi
+          printf '%s\n' "$PRODUCTION_ENV" > production.env
+          set -a
+          # shellcheck disable=SC1091
+          source production.env
+          set +a
+          if [ -z "${SCRIPT_ENCRYPTION_KEY:-}" ]; then
+            echo "SCRIPT_ENCRYPTION_KEY missing in production.env" >&2
+            exit 1
+          fi
+          if [[ ! "$SCRIPT_ENCRYPTION_KEY" =~ ^[0-9a-fA-F]{64}$ ]]; then
+            echo "SCRIPT_ENCRYPTION_KEY must be exactly 64 hexadecimal characters" >&2
+            exit 1
+          fi
+          umask 077
+          mkdir -p .ci
+          printf '%s' "$SCRIPT_ENCRYPTION_KEY" > .ci/script_aes256.key
+          echo "ENC_KEY_HASH=$(printf '%s' "$SCRIPT_ENCRYPTION_KEY" | sha256sum | awk '{print substr($1,1,16)}')" >> "$GITHUB_ENV"
+          echo "Encryption key materialized for template_release (SCRIPT_AES256_ENCRYPTION_KEY)"
+
       - name: Build Windows editor (stripped, no disable_3d)
         working-directory: .ci/engine
         shell: bash
         run: |
           set -euo pipefail
+          unset SCRIPT_AES256_ENCRYPTION_KEY || true
           JOBS="${NUMBER_OF_PROCESSORS:-8}"
           # shellcheck disable=SC2046
           scons -j"$JOBS" platform=windows target=editor arch=x86_64 \
@@ -262,6 +329,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          export SCRIPT_AES256_ENCRYPTION_KEY
+          SCRIPT_AES256_ENCRYPTION_KEY="$(tr -d '[:space:]' < "$GITHUB_WORKSPACE/.ci/script_aes256.key")"
+          test -n "$SCRIPT_AES256_ENCRYPTION_KEY"
           JOBS="${NUMBER_OF_PROCESSORS:-8}"
           # shellcheck disable=SC2046
           scons -j"$JOBS" platform=windows target=template_release arch=x86_64 \
@@ -285,6 +355,11 @@ jobs:
           name: engine-windows
           path: .ci/out/windows/
           retention-days: 3
+
+      - name: Scrub encryption key material
+        if: always()
+        shell: bash
+        run: rm -f production.env .ci/script_aes256.key
 
   export-linux:
     if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
