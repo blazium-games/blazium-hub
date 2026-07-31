@@ -64,7 +64,7 @@ if ($proto -notlike "*$($CustomDir.Replace('\','*'))*" -and $proto -notlike "*$C
 
 Write-Host "=== blazium-cli version ==="
 $verOut = & $cli version 2>&1
-if ($LASTEXITCODE -ne 0) { throw "blazium-cli version exit $LASTEXITCODE: $verOut" }
+if ($LASTEXITCODE -ne 0) { throw "blazium-cli version exit ${LASTEXITCODE}: $verOut" }
 $verText = ($verOut | Out-String).Trim()
 if (-not $verText) { throw "blazium-cli version produced empty output" }
 Write-Host $verText
