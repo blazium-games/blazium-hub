@@ -319,7 +319,7 @@ func update_apply_cli_async() -> Variant:
 	return await run_json_async(PackedStringArray(["update", "apply", "--product", "cli"]))
 
 
-func update_apply_hub(current_version: String = "", install_root: String = "") -> Variant:
+func update_apply_hub(current_version: String = "", install_root: String = "", launch: bool = false) -> Variant:
 	var args := PackedStringArray(["update", "apply", "--product", "hub"])
 	if not current_version.is_empty():
 		args.append("--current")
@@ -327,10 +327,12 @@ func update_apply_hub(current_version: String = "", install_root: String = "") -
 	if not install_root.is_empty():
 		args.append("--install-root")
 		args.append(install_root)
+	if launch:
+		args.append("--launch")
 	return run_json(args)
 
 
-func update_apply_hub_async(current_version: String = "", install_root: String = "") -> Variant:
+func update_apply_hub_async(current_version: String = "", install_root: String = "", launch: bool = false) -> Variant:
 	var args := PackedStringArray(["update", "apply", "--product", "hub"])
 	if not current_version.is_empty():
 		args.append("--current")
@@ -338,6 +340,8 @@ func update_apply_hub_async(current_version: String = "", install_root: String =
 	if not install_root.is_empty():
 		args.append("--install-root")
 		args.append(install_root)
+	if launch:
+		args.append("--launch")
 	return await run_json_async(args)
 
 

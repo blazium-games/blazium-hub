@@ -256,7 +256,7 @@ local HubCli = {
 		return self:run_json({ "update", "apply", "--product", "cli" })
 	end,
 
-	update_apply_hub = function(self, current_version, install_root)
+	update_apply_hub = function(self, current_version, install_root, launch)
 		local args = { "update", "apply", "--product", "hub" }
 		if current_version and current_version ~= "" then
 			table.insert(args, "--current")
@@ -265,6 +265,9 @@ local HubCli = {
 		if install_root and install_root ~= "" then
 			table.insert(args, "--install-root")
 			table.insert(args, install_root)
+		end
+		if launch then
+			table.insert(args, "--launch")
 		end
 		return self:run_json(args)
 	end,

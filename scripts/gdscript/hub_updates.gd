@@ -142,7 +142,7 @@ func _on_accepted() -> void:
 			else:
 				_last_summary = "blazium-cli updated to %s" % latest
 		"hub":
-			var r: Variant = await HubCli.update_apply_hub_async(hub_version(), install_root())
+			var r: Variant = await HubCli.update_apply_hub_async(hub_version(), install_root(), true)
 			ok = r != null
 			if not ok:
 				_last_summary = HubCli.get_last_error()
