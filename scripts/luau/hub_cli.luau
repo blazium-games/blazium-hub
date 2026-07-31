@@ -195,16 +195,27 @@ local HubCli = {
 		return self:run_json({ "editors" })
 	end,
 
-	install = function(self, version)
+	install = function(self, version, channel)
 		local args = { "install" }
 		if version and version ~= "" then
 			table.insert(args, version)
 		end
+		channel = tostring(channel or ""):match("^%s*(.-)%s*$") or ""
+		if channel ~= "" then
+			table.insert(args, "--channel")
+			table.insert(args, channel)
+		end
 		return self:run_json(args)
 	end,
 
-	uninstall = function(self, version)
-		return self:run_json({ "uninstall", version })
+	uninstall = function(self, version, channel)
+		local args = { "uninstall", version }
+		channel = tostring(channel or ""):match("^%s*(.-)%s*$") or ""
+		if channel ~= "" then
+			table.insert(args, "--channel")
+			table.insert(args, channel)
+		end
+		return self:run_json(args)
 	end,
 
 	install_path = function(self, path)

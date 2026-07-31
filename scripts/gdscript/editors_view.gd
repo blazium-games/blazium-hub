@@ -15,7 +15,8 @@ var _available_versions: Array = []
 func _ready() -> void:
 	channel_option.clear()
 	channel_option.add_item("release", 0)
-	channel_option.add_item("nightly", 1)
+	channel_option.add_item("prerelease", 1)
+	channel_option.add_item("nightly", 2)
 	channel_option.select(0)
 	refresh_btn.pressed.connect(_on_refresh)
 	install_btn.pressed.connect(_on_install)
@@ -26,6 +27,17 @@ func _ready() -> void:
 	reload_installed()
 	_refresh_console()
 	call_deferred("_load_available")
+
+
+func _selected_channel() -> String:
+	var id := channel_option.get_selected_id()
+	match id:
+		1:
+			return "prerelease"
+		2:
+			return "nightly"
+		_:
+			return "release"
 
 
 func _set_status(msg: String) -> void:
@@ -45,21 +57,26 @@ func _refresh_console() -> void:
 func reload_installed() -> void:
 	installed_list.clear()
 	for e in HubState.installed_editors:
-		var label := str(e)
 		var version := str(e)
+		var channel := "release"
+		var path := ""
 		if typeof(e) == TYPE_DICTIONARY:
 			version = str(e.get("version", e.get("Version", "")))
-			label = "%s  (%s)" % [version, str(e.get("path", e.get("Path", "")))]
+			channel = str(e.get("channel", e.get("Channel", "release"))).strip_edges()
+			if channel.is_empty():
+				channel = "release"
+			path = str(e.get("path", e.get("Path", "")))
+		var label := "%s [%s]" % [version, channel]
+		if not path.is_empty():
+			label = "%s  (%s)" % [label, path]
 		var idx := installed_list.add_item(label)
-		installed_list.set_item_metadata(idx, version)
+		installed_list.set_item_metadata(idx, {"version": version, "channel": channel})
 	status.text = "%d installed" % installed_list.item_count
 
 
 func _load_available() -> void:
 	_set_status("Loading CDN catalog…")
-	var channel := "release"
-	if channel_option.selected == 1:
-		channel = "nightly"
+	var channel := _selected_channel()
 	var data: Variant = await CdnClient.versions(channel)
 	available_list.clear()
 	_available_versions.clear()
@@ -115,9 +132,13 @@ func _on_install() -> void:
 	var version := ""
 	if not sels.is_empty():
 		version = available_list.get_item_text(sels[0])
-	_set_status("Installing %s via blazium-cli…" % (version if not version.is_empty() else "default"))
+	var channel := _selected_channel()
+	_set_status("Installing %s (%s) via blazium-cli…" % [
+		version if not version.is_empty() else "default",
+		channel,
+	])
 	_set_action_busy(true)
-	var data: Variant = await HubCli.install_async(version)
+	var data: Variant = await HubCli.install_async(version, channel)
 	_set_action_busy(false)
 	_refresh_console()
 	if data == null:
@@ -136,10 +157,20 @@ func _on_uninstall() -> void:
 		_set_status("Select an installed editor")
 		_refresh_console()
 		return
-	var version := str(installed_list.get_item_metadata(sels[0]))
-	_set_status("Uninstalling %s…" % version)
+	var meta: Variant = installed_list.get_item_metadata(sels[0])
+	var version := ""
+	var channel := ""
+	if typeof(meta) == TYPE_DICTIONARY:
+		version = str(meta.get("version", ""))
+		channel = str(meta.get("channel", "")).strip_edges()
+	else:
+		version = str(meta)
+	_set_status("Uninstalling %s%s…" % [
+		version,
+		(" [%s]" % channel) if not channel.is_empty() else "",
+	])
 	_set_action_busy(true)
-	var data: Variant = await HubCli.uninstall_async(version)
+	var data: Variant = await HubCli.uninstall_async(version, channel)
 	_set_action_busy(false)
 	_refresh_console()
 	if data == null:

@@ -236,26 +236,40 @@ func editors() -> Variant:
 	return run_json(PackedStringArray(["editors"]))
 
 
-func install(version: String = "") -> Variant:
+func install(version: String = "", channel: String = "") -> Variant:
 	var args := PackedStringArray(["install"])
 	if not version.is_empty():
 		args.append(version)
+	if not channel.strip_edges().is_empty():
+		args.append("--channel")
+		args.append(channel.strip_edges())
 	return run_json(args)
 
 
-func install_async(version: String = "") -> Variant:
+func install_async(version: String = "", channel: String = "") -> Variant:
 	var args := PackedStringArray(["install"])
 	if not version.is_empty():
 		args.append(version)
+	if not channel.strip_edges().is_empty():
+		args.append("--channel")
+		args.append(channel.strip_edges())
 	return await run_json_async(args)
 
 
-func uninstall(version: String) -> Variant:
-	return run_json(PackedStringArray(["uninstall", version]))
+func uninstall(version: String, channel: String = "") -> Variant:
+	var args := PackedStringArray(["uninstall", version])
+	if not channel.strip_edges().is_empty():
+		args.append("--channel")
+		args.append(channel.strip_edges())
+	return run_json(args)
 
 
-func uninstall_async(version: String) -> Variant:
-	return await run_json_async(PackedStringArray(["uninstall", version]))
+func uninstall_async(version: String, channel: String = "") -> Variant:
+	var args := PackedStringArray(["uninstall", version])
+	if not channel.strip_edges().is_empty():
+		args.append("--channel")
+		args.append(channel.strip_edges())
+	return await run_json_async(args)
 
 
 func install_path(path: String = "") -> Variant:
