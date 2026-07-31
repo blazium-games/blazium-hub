@@ -794,51 +794,60 @@ jobs:
           echo "C:\Program Files (x86)\Inno Setup 6" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Build installer (iscc)
-        shell: bash
+        # PowerShell: Git Bash MSYS path-converts /D... flags into fake "script" paths,
+        # which makes ISCC fail with "You may not specify more than one script filename."
+        shell: powershell
         run: |
-          set -euo pipefail
-          VER="${{ needs.resolve-engine.outputs.version }}"
-          ARCH="${{ matrix.arch }}"
-          if command -v cygpath >/dev/null 2>&1; then
-            SRC_WIN="$(cygpath -w "$(pwd)/build/package/windows")"
-          else
-            SRC_WIN="$(pwd -W 2>/dev/null || pwd)/build/package/windows"
-            SRC_WIN="${SRC_WIN//\//\\}"
-          fi
-          # SVG is not valid for Inno SetupIconFile; rasterize to .ico (ImageMagick) or fallback.
-          ICO="packaging/windows/blazium-hub.ico"
-          MAGICK="$(command -v magick || true)"
-          if [ -z "$MAGICK" ]; then
-            MAGICK="$(ls /c/Program\ Files/ImageMagick-*/magick.exe 2>/dev/null | head -n1 || true)"
-          fi
-          if [ -n "$MAGICK" ] && "$MAGICK" "assets/icons/icon.svg" -background none -resize 256x256 "$ICO"; then
-            echo "Generated $ICO via ImageMagick"
-          else
-            python ci/write_fallback_ico.py "$ICO"
-          fi
-          test -f "$ICO"
-          ISCC="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
-          test -x "$ISCC" || test -f "$ISCC"
-          # Avoid empty "${EXTRA[@]}" — Git Bash can pass a blank argv that ISCC treats as a second script.
-          if [[ "$ARCH" == "x86_32" ]]; then
-            "$ISCC" \
-              "/DMyAppVersion=${VER}" \
-              "/DMyAppArchLabel=${ARCH}" \
-              "/DMyAppIs32=1" \
-              "/DMyAppSourceDir=${SRC_WIN}" \
-              packaging/windows/blazium-hub.iss
-          else
-            "$ISCC" \
-              "/DMyAppVersion=${VER}" \
-              "/DMyAppArchLabel=${ARCH}" \
-              "/DMyAppSourceDir=${SRC_WIN}" \
-              packaging/windows/blazium-hub.iss
-          fi
-          SETUP="packaging/windows/Output/BlaziumHub-Setup-${VER}-${ARCH}.exe"
-          test -f "$SETUP"
-          echo "SETUP_PATH=$SETUP" >> "$GITHUB_ENV"
-          echo "SETUP_NAME=$(basename "$SETUP")" >> "$GITHUB_ENV"
-          ls -lh packaging/windows/Output/
+          $ErrorActionPreference = "Stop"
+          $ver = "${{ needs.resolve-engine.outputs.version }}"
+          $arch = "${{ matrix.arch }}"
+          $src = (Resolve-Path "build\package\windows").Path
+          $ico = "packaging\windows\blazium-hub.ico"
+          $magickExe = $null
+          $cmd = Get-Command magick -ErrorAction SilentlyContinue
+          if ($cmd) { $magickExe = $cmd.Source }
+          if (-not $magickExe) {
+            $found = Get-ChildItem "C:\Program Files\ImageMagick*\magick.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($found) { $magickExe = $found.FullName }
+          }
+          $icoOk = $false
+          if ($magickExe) {
+            & $magickExe "assets\icons\icon.svg" -background none -resize 256x256 $ico
+            if ($LASTEXITCODE -eq 0 -and (Test-Path $ico)) {
+              Write-Host "Generated $ico via ImageMagick"
+              $icoOk = $true
+            }
+          }
+          if (-not $icoOk) {
+            python ci/write_fallback_ico.py $ico
+          }
+          if (-not (Test-Path $ico)) { throw "Missing $ico" }
+          $iscc = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw "Missing $iscc" }
+          $iss = (Resolve-Path "packaging\windows\blazium-hub.iss").Path
+          $args = @(
+            "/DMyAppVersion=$ver",
+            "/DMyAppArchLabel=$arch",
+            "/DMyAppSourceDir=$src",
+            $iss
+          )
+          if ($arch -eq "x86_32") {
+            $args = @(
+              "/DMyAppVersion=$ver",
+              "/DMyAppArchLabel=$arch",
+              "/DMyAppIs32=1",
+              "/DMyAppSourceDir=$src",
+              $iss
+            )
+          }
+          Write-Host "ISCC $($args -join ' ')"
+          & $iscc @args
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed ($LASTEXITCODE)" }
+          $setup = "packaging\windows\Output\BlaziumHub-Setup-$ver-$arch.exe"
+          if (-not (Test-Path $setup)) { throw "Missing $setup" }
+          "SETUP_PATH=$setup" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "SETUP_NAME=$(Split-Path $setup -Leaf)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Get-ChildItem "packaging\windows\Output" | Format-Table Name, Length
 
       - name: Digest installer
         id: digest
