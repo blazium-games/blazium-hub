@@ -93,12 +93,69 @@ jobs:
 
       - name: Hub version
         id: hubver
+        env:
+          SEMVER_SIMPLE: ${{ steps.semver.outputs.simple_version }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             V="${GITHUB_REF#refs/tags/v}"
           else
-            V="${{ steps.semver.outputs.simple_version }}"
+            # game-semver: patch-per-commit from 0.0.0, then max() with tags.
+            # An existing v0.1.0 tag therefore freezes simple_version at 0.1.0 forever
+            # (0.0.N never exceeds 0.1.0). Advance past the latest v* tag when needed.
+            V="$(python3 - <<'PY'
+          import json, os, re, subprocess, urllib.request
+
+          def parse(v: str):
+              parts = [p for p in re.split(r"[^\d]+", v.strip()) if p != ""]
+              nums = [int(p) if p.isdigit() else 0 for p in parts[:3]]
+              while len(nums) < 3:
+                  nums.append(0)
+              return tuple(nums)
+
+          def fmt(t):
+              return f"{t[0]}.{t[1]}.{t[2]}"
+
+          def bump_patch(t):
+              return (t[0], t[1], t[2] + 1)
+
+          semver = os.environ.get("SEMVER_SIMPLE", "").strip()
+          if not semver:
+              raise SystemExit("empty SEMVER_SIMPLE")
+          cand = parse(semver)
+
+          req = urllib.request.Request(
+              f"https://api.github.com/repos/{os.environ['GITHUB_REPOSITORY']}/tags?per_page=100",
+              headers={
+                  "Accept": "application/vnd.github+json",
+                  "Authorization": f"Bearer {os.environ['GH_TOKEN']}",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              },
+          )
+          with urllib.request.urlopen(req, timeout=30) as resp:
+              tags = json.load(resp)
+          highest = None
+          for tag in tags:
+              name = tag.get("name") or ""
+              m = re.match(r"^v?(\d+\.\d+\.\d+)$", name.strip())
+              if not m:
+                  continue
+              t = parse(m.group(1))
+              if highest is None or t > highest:
+                  highest = t
+
+          if highest is not None and cand <= highest:
+              out = fmt(bump_patch(highest))
+              print(f"semver simple_version={semver} <= latest tag {fmt(highest)}; using {out}", flush=True)
+          else:
+              out = fmt(cand)
+              print(f"using game-semver simple_version={out}", flush=True)
+          print(out)
+          PY
+          )"
+            # Last line is the version; strip log lines if any leaked (take last token line).
+            V="$(printf '%s\n' "$V" | tail -n1 | tr -d '[:space:]')"
           fi
           test -n "$V"
           echo "version=$V" >> "$GITHUB_OUTPUT"
