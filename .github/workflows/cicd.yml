@@ -147,26 +147,32 @@ jobs:
             platform: linuxbsd
             arch: x86_64
             target: editor
+            msvc_arch: ""
           - runner: windows-2022
             platform: windows
             arch: x86_64
             target: editor
+            msvc_arch: x64
           - runner: ubuntu-22.04
             platform: linuxbsd
             arch: x86_64
             target: template_release
+            msvc_arch: ""
           - runner: ubuntu-22.04
             platform: linuxbsd
             arch: x86_32
             target: template_release
+            msvc_arch: ""
           - runner: windows-2022
             platform: windows
             arch: x86_64
             target: template_release
+            msvc_arch: x64
           - runner: windows-2022
             platform: windows
             arch: x86_32
             target: template_release
+            msvc_arch: x86
     steps:
       - uses: actions/checkout@v4
 
@@ -182,7 +188,8 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.force_engine_rebuild }}" == "true" ]]; then
             FORCE="-force-${{ github.run_id }}"
           fi
-          KEY="hub-engine-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.target }}-${{ needs.resolve-engine.outputs.blazium_ref }}-${{ hashFiles('ci/hub_scons.env') }}-${ENC}${FORCE}"
+          # -pearch1: invalidate caches that staged wrong PE arch (Windows x86_32 linked with x64 MSVC).
+          KEY="hub-engine-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.target }}-${{ needs.resolve-engine.outputs.blazium_ref }}-${{ hashFiles('ci/hub_scons.env') }}-${ENC}-pearch1${FORCE}"
           echo "key=$KEY" >> "$GITHUB_OUTPUT"
           echo "Binary cache key: $KEY"
 
@@ -228,7 +235,8 @@ jobs:
           fi
 
       - uses: actions/setup-python@v5
-        if: steps.bin-cache.outputs.cache-hit != 'true'
+        # Always on Windows (PE arch assert on cache hit); otherwise only when building.
+        if: runner.os == 'Windows' || steps.bin-cache.outputs.cache-hit != 'true'
         with:
           python-version: "3.11"
 
@@ -239,7 +247,7 @@ jobs:
       - uses: ilammy/msvc-dev-cmd@v1
         if: steps.bin-cache.outputs.cache-hit != 'true' && runner.os == 'Windows'
         with:
-          arch: ${{ matrix.arch == 'x86_32' && 'x86' || 'x64' }}
+          arch: ${{ matrix.msvc_arch }}
 
       - name: Load Hub SCons flags
         if: steps.bin-cache.outputs.cache-hit != 'true'
@@ -333,6 +341,9 @@ jobs:
           test "$(stat -c%s "$BIN")" -ge "$MIN"
           cp "$BIN" "$OUT"
           chmod +x "$OUT" || true
+          if [[ "${{ matrix.platform }}" == "windows" ]]; then
+            python ci/assert_pe_arch.py "$OUT" "$ARCH"
+          fi
           ls -lh .ci/out/
           echo "### ${{ matrix.platform }} ${{ matrix.arch }} ${{ matrix.target }}" >> "$GITHUB_STEP_SUMMARY"
           ls -lh "$OUT" >> "$GITHUB_STEP_SUMMARY"
@@ -344,6 +355,7 @@ jobs:
           if [[ "${{ matrix.platform }}" == "windows" ]]; then
             test -f ".ci/out/${{ matrix.target }}.exe"
             ls -lh ".ci/out/${{ matrix.target }}.exe"
+            python ci/assert_pe_arch.py ".ci/out/${{ matrix.target }}.exe" "${{ matrix.arch }}"
           else
             test -f ".ci/out/${{ matrix.target }}"
             chmod +x ".ci/out/${{ matrix.target }}"
@@ -729,10 +741,10 @@ jobs:
           output_path: ./build/package/windows
           environment_name: PROD
 
-      - name: Install Inno Setup
+      - name: Install Inno Setup + ImageMagick
         shell: powershell
         run: |
-          choco install innosetup -y --no-progress
+          choco install innosetup imagemagick -y --no-progress
           echo "C:\Program Files (x86)\Inno Setup 6" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Build installer (iscc)
@@ -741,16 +753,41 @@ jobs:
           set -euo pipefail
           VER="${{ needs.resolve-engine.outputs.version }}"
           ARCH="${{ matrix.arch }}"
-          EXTRA=()
-          if [[ "$ARCH" == "x86_32" ]]; then
-            EXTRA+=("/DMyAppIs32=1")
+          if command -v cygpath >/dev/null 2>&1; then
+            SRC_WIN="$(cygpath -w "$(pwd)/build/package/windows")"
+          else
+            SRC_WIN="$(pwd -W 2>/dev/null || pwd)/build/package/windows"
+            SRC_WIN="${SRC_WIN//\//\\}"
           fi
-          "C:/Program Files (x86)/Inno Setup 6/ISCC.exe" \
-            "/DMyAppVersion=${VER}" \
-            "/DMyAppArchLabel=${ARCH}" \
-            "/DMyAppSourceDir=$(pwd)/build/package/windows" \
-            "${EXTRA[@]}" \
-            packaging/windows/blazium-hub.iss
+          # SVG is not valid for Inno SetupIconFile; rasterize to .ico (ImageMagick) or fallback.
+          ICO="packaging/windows/blazium-hub.ico"
+          MAGICK="$(command -v magick || true)"
+          if [ -z "$MAGICK" ]; then
+            MAGICK="$(ls /c/Program\ Files/ImageMagick-*/magick.exe 2>/dev/null | head -n1 || true)"
+          fi
+          if [ -n "$MAGICK" ] && "$MAGICK" "assets/icons/icon.svg" -background none -resize 256x256 "$ICO"; then
+            echo "Generated $ICO via ImageMagick"
+          else
+            python ci/write_fallback_ico.py "$ICO"
+          fi
+          test -f "$ICO"
+          ISCC="/c/Program Files (x86)/Inno Setup 6/ISCC.exe"
+          test -x "$ISCC" || test -f "$ISCC"
+          # Avoid empty "${EXTRA[@]}" — Git Bash can pass a blank argv that ISCC treats as a second script.
+          if [[ "$ARCH" == "x86_32" ]]; then
+            "$ISCC" \
+              "/DMyAppVersion=${VER}" \
+              "/DMyAppArchLabel=${ARCH}" \
+              "/DMyAppIs32=1" \
+              "/DMyAppSourceDir=${SRC_WIN}" \
+              packaging/windows/blazium-hub.iss
+          else
+            "$ISCC" \
+              "/DMyAppVersion=${VER}" \
+              "/DMyAppArchLabel=${ARCH}" \
+              "/DMyAppSourceDir=${SRC_WIN}" \
+              packaging/windows/blazium-hub.iss
+          fi
           SETUP="packaging/windows/Output/BlaziumHub-Setup-${VER}-${ARCH}.exe"
           test -f "$SETUP"
           echo "SETUP_PATH=$SETUP" >> "$GITHUB_ENV"
