@@ -85,15 +85,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Get Version with Bioblaze/game-semver-action
+        uses: Bioblaze/game-semver-action@v10
+        id: semver
+        with:
+          personal_github_token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Hub version
         id: hubver
         run: |
+          set -euo pipefail
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             V="${GITHUB_REF#refs/tags/v}"
           else
-            V="$(tr -d '[:space:]' < VERSION)"
+            V="${{ steps.semver.outputs.simple_version }}"
           fi
+          test -n "$V"
           echo "version=$V" >> "$GITHUB_OUTPUT"
+          echo "Hub version: $V"
+          # Workspace only; local-dev VERSION in git stays as a default.
+          printf '%s\n' "$V" > VERSION
 
       - name: Read BLAZIUM_REF
         id: ref
@@ -484,6 +495,13 @@ jobs:
           rm -f production.env
           echo "Export encryption key written to file (not GITHUB_ENV)"
 
+      - name: Stamp Hub version into project
+        run: |
+          set -euo pipefail
+          python3 ci/stamp_hub_version.py "${{ needs.resolve-engine.outputs.version }}"
+          grep -E '^config/version=' project.godot
+          grep -E '^application/(file|product)_version=' export_presets.cfg | head -n4
+
       - name: Patch export_presets custom template
         run: |
           set -euo pipefail
@@ -702,6 +720,14 @@ jobs:
           printf '%s' "$SCRIPT_ENCRYPTION_KEY" > .ci/export_encryption.key
           rm -f production.env
           echo "Export encryption key written to file (not GITHUB_ENV)"
+
+      - name: Stamp Hub version into project
+        shell: bash
+        run: |
+          set -euo pipefail
+          python ci/stamp_hub_version.py "${{ needs.resolve-engine.outputs.version }}"
+          grep -E '^config/version=' project.godot
+          grep -E '^application/(file|product)_version=' export_presets.cfg | head -n4
 
       - name: Patch export_presets custom template
         shell: bash
