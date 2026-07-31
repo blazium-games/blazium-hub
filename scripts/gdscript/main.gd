@@ -40,6 +40,8 @@ func _launch_update_check() -> void:
 
 func _on_error(msg: String) -> void:
 	status_label.text = msg
+	if HubLog and not msg.is_empty():
+		HubLog.append(msg)
 
 
 func _on_refreshed() -> void:

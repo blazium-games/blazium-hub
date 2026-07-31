@@ -65,6 +65,48 @@ func resolve_cli() -> String:
 			cli_path = c
 			return c
 	_last_error = "blazium-cli not found"
+	if HubLog:
+		HubLog.append("ERROR: %s" % _last_error)
+	return ""
+
+
+## Find the last top-level JSON object/array in mixed stdout+stderr text.
+func extract_last_json_text(text: String) -> String:
+	var s := text.strip_edges()
+	if s.is_empty():
+		return ""
+	var end := -1
+	for i in range(s.length() - 1, -1, -1):
+		var ch := s[i]
+		if ch == "}" or ch == "]":
+			end = i
+			break
+	if end < 0:
+		return ""
+	var open_ch := "{" if s[end] == "}" else "["
+	var close_ch := s[end]
+	var depth := 0
+	var in_str := false
+	var escape := false
+	for i in range(end, -1, -1):
+		var ch := s[i]
+		if in_str:
+			if escape:
+				escape = false
+			elif ch == "\\":
+				escape = true
+			elif ch == "\"":
+				in_str = false
+			continue
+		if ch == "\"":
+			in_str = true
+			continue
+		if ch == close_ch:
+			depth += 1
+		elif ch == open_ch:
+			depth -= 1
+			if depth == 0:
+				return s.substr(i, end - i + 1)
 	return ""
 
 
@@ -77,9 +119,14 @@ func parse_json_output(text: String, code: int) -> Variant:
 	var data: Variant = JSON.parse_string(text)
 	if data == null:
 		var lines := text.split("\n")
-		data = JSON.parse_string(lines[lines.size() - 1])
+		if not lines.is_empty():
+			data = JSON.parse_string(lines[lines.size() - 1])
 	if data == null:
-		_last_error = "failed to parse JSON: %s" % text.substr(0, 200)
+		var extracted := extract_last_json_text(text)
+		if not extracted.is_empty():
+			data = JSON.parse_string(extracted)
+	if data == null:
+		_last_error = "failed to parse JSON (see Logs): %s" % text.substr(0, 200)
 		return null
 	if typeof(data) == TYPE_DICTIONARY and data.has("error"):
 		_last_error = str(data["error"])
@@ -107,7 +154,13 @@ func run_json(args: PackedStringArray) -> Variant:
 			text = str(line)
 		else:
 			text += "\n" + str(line)
-	return parse_json_output(text, code)
+	var joined_args := " ".join(argv)
+	if HubLog:
+		HubLog.append_block("CLI %s %s (exit %d)" % [bin, joined_args, code], text)
+	var data: Variant = parse_json_output(text, code)
+	if data == null and HubLog and not _last_error.is_empty():
+		HubLog.append("ERROR: %s" % _last_error)
+	return data
 
 
 func editors() -> Variant:

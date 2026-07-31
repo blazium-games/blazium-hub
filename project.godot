@@ -15,6 +15,7 @@ config/windows_native_icon="res://assets/icons/icon.svg"
 [autoload]
 
 HubSettings="*res://autoload/hub_settings.gd"
+HubLog="*res://autoload/hub_log.gd"
 HubCli="*res://scripts/gdscript/hub_cli.gd"
 CdnClient="*res://scripts/gdscript/cdn_client.gd"
 HubState="*res://scripts/gdscript/hub_state.gd"

@@ -63,6 +63,32 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Check blazium-cli updates"
 
+[node name="LogsLabel" type="Label" parent="."]
+layout_mode = 2
+text = "Logs"
+
+[node name="LogsEdit" type="TextEdit" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 180)
+layout_mode = 2
+size_flags_vertical = 3
+editable = false
+wrap_mode = 1
+placeholder_text = "Session logs from Hub and blazium-cli…"
+
+[node name="LogsBtnRow" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="CopyLogsBtn" type="Button" parent="LogsBtnRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Copy"
+
+[node name="ClearLogsBtn" type="Button" parent="LogsBtnRow"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Clear"
+
 [node name="UriHelp" type="Label" parent="."]
 layout_mode = 2
 autowrap_mode = 3

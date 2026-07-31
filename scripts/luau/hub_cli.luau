@@ -80,6 +80,51 @@ local HubCli = {
 		return ""
 	end,
 
+	extract_last_json_text = function(_self, text)
+		local s = tostring(text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+		if s == "" then
+			return ""
+		end
+		local end_i = nil
+		for i = #s, 1, -1 do
+			local ch = string.sub(s, i, i)
+			if ch == "}" or ch == "]" then
+				end_i = i
+				break
+			end
+		end
+		if not end_i then
+			return ""
+		end
+		local close_ch = string.sub(s, end_i, end_i)
+		local open_ch = (close_ch == "}") and "{" or "["
+		local depth = 0
+		local in_str = false
+		local escape = false
+		for i = end_i, 1, -1 do
+			local ch = string.sub(s, i, i)
+			if in_str then
+				if escape then
+					escape = false
+				elseif ch == "\\" then
+					escape = true
+				elseif ch == '"' then
+					in_str = false
+				end
+			elseif ch == '"' then
+				in_str = true
+			elseif ch == close_ch then
+				depth = depth + 1
+			elseif ch == open_ch then
+				depth = depth - 1
+				if depth == 0 then
+					return string.sub(s, i, end_i)
+				end
+			end
+		end
+		return ""
+	end,
+
 	run_json = function(self, args)
 		self._last_error = ""
 		local bin = self:resolve_cli()
@@ -106,13 +151,17 @@ local HubCli = {
 		end
 		text = string.gsub(text, "^%s+", "")
 		text = string.gsub(text, "%s+$", "")
+		local joined = table.concat(argv, " ")
+		local hub_log = Engine.get_main_loop():get_root():get_node_or_null("/root/HubLog")
+		if hub_log and hub_log.has_method("append_block") then
+			hub_log:append_block(string.format("CLI %s %s (exit %s)", bin, joined, tostring(code)), text)
+		end
 		if text == "" then
 			self._last_error = "empty CLI output (exit " .. tostring(code) .. ")"
 			return nil
 		end
 		local data = JSON.parse_string(text)
 		if data == nil then
-			-- try last JSON object line
 			local last = text
 			for line in string.gmatch(text, "[^\r\n]+") do
 				last = line
@@ -120,7 +169,13 @@ local HubCli = {
 			data = JSON.parse_string(last)
 		end
 		if data == nil then
-			self._last_error = "failed to parse JSON: " .. string.sub(text, 1, 200)
+			local extracted = self:extract_last_json_text(text)
+			if extracted ~= "" then
+				data = JSON.parse_string(extracted)
+			end
+		end
+		if data == nil then
+			self._last_error = "failed to parse JSON (see Logs): " .. string.sub(text, 1, 200)
 			return nil
 		end
 		if type(data) == "table" and data.error then

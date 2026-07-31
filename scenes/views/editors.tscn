@@ -72,3 +72,16 @@ text = "Install selected"
 unique_name_in_owner = true
 layout_mode = 2
 text = ""
+
+[node name="ConsoleLabel" type="Label" parent="."]
+layout_mode = 2
+text = "Console"
+
+[node name="EditorsConsole" type="TextEdit" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 140)
+layout_mode = 2
+size_flags_vertical = 3
+editable = false
+wrap_mode = 1
+placeholder_text = "CLI and Hub messages appear here…"

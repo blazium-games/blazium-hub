@@ -712,6 +712,8 @@ jobs:
         if: always()
         run: rm -f production.env .ci/export_encryption.key
 
+  # Windows Authenticode (sslcom-code-signer) is a Linux container action.
+  # Flow: export (Win) → sign bins (Linux) → ISCC (Win) → sign setup (Linux) → smoke/CDN (Win).
   export-windows:
     if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
     needs: [resolve-engine, build-engine]
@@ -721,8 +723,6 @@ jobs:
       fail-fast: false
       matrix:
         arch: [x86_64, x86_32]
-    outputs:
-      version: ${{ needs.resolve-engine.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
@@ -824,9 +824,7 @@ jobs:
           mkdir -p build/windows
           .ci/out/windows/editor.exe --headless --path . --export-release "$PRESET" "$OUT"
           test -f "$OUT"
-          # Inno expects Hub/BlaziumHub.exe
           cp "$OUT" build/windows/BlaziumHub.exe
-          echo "HUB_BIN=$OUT" >> "$GITHUB_ENV"
           echo "### Hub Windows ${ARCH}" >> "$GITHUB_STEP_SUMMARY"
           ls -lh "$OUT" >> "$GITHUB_STEP_SUMMARY"
 
@@ -836,7 +834,7 @@ jobs:
           set -euo pipefail
           mkdir -p build/package/windows/Hub
           cp build/windows/BlaziumHub.exe build/package/windows/Hub/BlaziumHub.exe
-          python3 ci/fetch_latest_cli.py \
+          python ci/fetch_latest_cli.py \
             --platform windows \
             --arch "${{ matrix.arch }}" \
             --out build/package/windows/blazium-cli.exe
@@ -844,9 +842,40 @@ jobs:
           cp packaging/windows/blazium-hub.cmd build/package/windows/blazium-hub.cmd
           ls -lh build/package/windows/ build/package/windows/Hub/
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-package-unsigned-${{ matrix.arch }}
+          path: build/package/windows/**
+
+      - name: Scrub encryption key material
+        if: always()
+        shell: bash
+        run: rm -f production.env .ci/export_encryption.key
+
+  sign-windows-binaries:
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
+    needs: [resolve-engine, export-windows]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, x86_32]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-package-unsigned-${{ matrix.arch }}
+          path: build/package/windows
+
+      - name: Assert unsigned package tree
+        run: |
+          set -euo pipefail
+          test -f build/package/windows/Hub/BlaziumHub.exe
+          test -f build/package/windows/blazium-cli.exe
+          ls -lh build/package/windows/ build/package/windows/Hub/
+
       - uses: bioblaze/sslcom-code-signer@v5
         name: Sign BlaziumHub.exe
-        continue-on-error: true
         with:
           command: sign
           username: ${{ secrets.ES_USERNAME }}
@@ -859,7 +888,6 @@ jobs:
 
       - uses: bioblaze/sslcom-code-signer@v5
         name: Sign blazium-cli.exe
-        continue-on-error: true
         with:
           command: sign
           username: ${{ secrets.ES_USERNAME }}
@@ -870,6 +898,37 @@ jobs:
           output_path: ./build/package/windows
           environment_name: PROD
 
+      - name: Assert signed binaries
+        run: |
+          set -euo pipefail
+          test -f build/package/windows/Hub/BlaziumHub.exe
+          test -f build/package/windows/blazium-cli.exe
+          test "$(stat -c%s build/package/windows/Hub/BlaziumHub.exe)" -ge 1048576
+          test "$(stat -c%s build/package/windows/blazium-cli.exe)" -ge 1048576
+          ls -lh build/package/windows/ build/package/windows/Hub/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-package-signed-bins-${{ matrix.arch }}
+          path: build/package/windows/**
+
+  package-windows:
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
+    needs: [resolve-engine, sign-windows-binaries]
+    runs-on: windows-2022
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, x86_32]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-package-signed-bins-${{ matrix.arch }}
+          path: build/package/windows
+
       - name: Install Inno Setup + ImageMagick
         shell: powershell
         run: |
@@ -877,13 +936,13 @@ jobs:
           echo "C:\Program Files (x86)\Inno Setup 6" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Build installer (iscc)
-        # PowerShell: Git Bash MSYS path-converts /D... flags into fake "script" paths,
-        # which makes ISCC fail with "You may not specify more than one script filename."
         shell: powershell
         run: |
           $ErrorActionPreference = "Stop"
           $ver = "${{ needs.resolve-engine.outputs.version }}"
           $arch = "${{ matrix.arch }}"
+          if (-not (Test-Path "build\package\windows\Hub\BlaziumHub.exe")) { throw "Missing signed Hub exe" }
+          if (-not (Test-Path "build\package\windows\blazium-cli.exe")) { throw "Missing signed CLI exe" }
           $src = (Resolve-Path "build\package\windows").Path
           $ico = "packaging\windows\blazium-hub.ico"
           $magickExe = $null
@@ -928,9 +987,103 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "ISCC failed ($LASTEXITCODE)" }
           $setup = "packaging\windows\Output\BlaziumHub-Setup-$ver-$arch.exe"
           if (-not (Test-Path $setup)) { throw "Missing $setup" }
-          "SETUP_PATH=$setup" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          "SETUP_NAME=$(Split-Path $setup -Leaf)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           Get-ChildItem "packaging\windows\Output" | Format-Table Name, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-setup-unsigned-${{ matrix.arch }}
+          path: packaging/windows/Output/BlaziumHub-Setup-${{ needs.resolve-engine.outputs.version }}-${{ matrix.arch }}.exe
+
+  sign-windows-installer:
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
+    needs: [resolve-engine, package-windows]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, x86_32]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-setup-unsigned-${{ matrix.arch }}
+          path: packaging/windows/Output
+
+      - name: Locate setup
+        id: setup
+        run: |
+          set -euo pipefail
+          VER="${{ needs.resolve-engine.outputs.version }}"
+          ARCH="${{ matrix.arch }}"
+          SETUP="packaging/windows/Output/BlaziumHub-Setup-${VER}-${ARCH}.exe"
+          test -f "$SETUP"
+          echo "path=$SETUP" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "$SETUP")" >> "$GITHUB_OUTPUT"
+          ls -lh packaging/windows/Output/
+
+      - uses: bioblaze/sslcom-code-signer@v5
+        name: Sign installer
+        with:
+          command: sign
+          username: ${{ secrets.ES_USERNAME }}
+          password: ${{ secrets.ES_PASSWORD }}
+          credential_id: ${{ secrets.CREDENTIAL_ID }}
+          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
+          file_path: ${{ steps.setup.outputs.path }}
+          output_path: ./packaging/windows/Output
+          environment_name: PROD
+
+      - name: Stage signed installer artifact
+        run: |
+          set -euo pipefail
+          VER="${{ needs.resolve-engine.outputs.version }}"
+          SETUP="${{ steps.setup.outputs.path }}"
+          test -f "$SETUP"
+          test "$(stat -c%s "$SETUP")" -ge 1048576
+          mkdir -p "upload/windows/${VER}"
+          cp "$SETUP" "upload/windows/${VER}/"
+          ls -lh "upload/windows/${VER}/"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer-${{ matrix.arch }}
+          path: upload/windows/**
+
+  publish-windows:
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
+    needs: [resolve-engine, sign-windows-installer]
+    runs-on: windows-2022
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, x86_32]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-installer-${{ matrix.arch }}
+          path: upload/windows
+
+      - name: Locate signed setup
+        id: setup
+        shell: bash
+        run: |
+          set -euo pipefail
+          VER="${{ needs.resolve-engine.outputs.version }}"
+          ARCH="${{ matrix.arch }}"
+          SETUP="upload/windows/${VER}/BlaziumHub-Setup-${VER}-${ARCH}.exe"
+          test -f "$SETUP"
+          echo "SETUP_PATH=$SETUP" >> "$GITHUB_ENV"
+          echo "SETUP_NAME=$(basename "$SETUP")" >> "$GITHUB_ENV"
+          echo "path=$SETUP" >> "$GITHUB_OUTPUT"
+          ls -lh "upload/windows/${VER}/"
+
+      - name: Install/uninstall smoke (custom DIR)
+        shell: powershell
+        run: |
+          ./ci/smoke_install_windows.ps1 -SetupPath "$env:SETUP_PATH"
 
       - name: Digest installer
         id: digest
@@ -940,36 +1093,6 @@ jobs:
           SIZE=$(wc -c < "$SETUP_PATH" | tr -d ' ')
           echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
           echo "size=$SIZE" >> "$GITHUB_OUTPUT"
-
-      - uses: bioblaze/sslcom-code-signer@v5
-        name: Sign installer
-        continue-on-error: true
-        with:
-          command: sign
-          username: ${{ secrets.ES_USERNAME }}
-          password: ${{ secrets.ES_PASSWORD }}
-          credential_id: ${{ secrets.CREDENTIAL_ID }}
-          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
-          file_path: ${{ env.SETUP_PATH }}
-          output_path: ./packaging/windows/Output
-          environment_name: PROD
-
-      - name: Install/uninstall smoke (custom DIR)
-        shell: powershell
-        run: |
-          ./ci/smoke_install_windows.ps1 -SetupPath "$env:SETUP_PATH"
-
-      - name: Stage upload
-        shell: bash
-        run: |
-          VER="${{ needs.resolve-engine.outputs.version }}"
-          mkdir -p "upload/windows/${VER}"
-          cp "$SETUP_PATH" "upload/windows/${VER}/"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: windows-installer-${{ matrix.arch }}
-          path: upload/windows/**
 
       - uses: BetaHuhn/do-spaces-action@v2
         with:
@@ -1005,14 +1128,9 @@ jobs:
           EOF
           )"
 
-      - name: Scrub encryption key material
-        if: always()
-        shell: bash
-        run: rm -f production.env .ci/export_encryption.key
-
   publish-catalog:
     if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
-    needs: [resolve-engine, export-windows, export-linux]
+    needs: [resolve-engine, publish-windows, export-linux]
     runs-on: ubuntu-22.04
     outputs:
       version: ${{ needs.resolve-engine.outputs.version }}
@@ -1027,7 +1145,7 @@ jobs:
 
   github-release:
     if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
-    needs: [resolve-engine, publish-catalog, export-linux, export-windows]
+    needs: [resolve-engine, publish-catalog, export-linux, publish-windows]
     runs-on: ubuntu-22.04
     permissions:
       contents: write

@@ -7,6 +7,7 @@ extends VBoxContainer
 @onready var install_btn: Button = %InstallBtn
 @onready var uninstall_btn: Button = %UninstallBtn
 @onready var status: Label = %EditorsStatus
+@onready var console: TextEdit = %EditorsConsole
 
 var _available_versions: Array = []
 
@@ -20,8 +21,25 @@ func _ready() -> void:
 	install_btn.pressed.connect(_on_install)
 	uninstall_btn.pressed.connect(_on_uninstall)
 	channel_option.item_selected.connect(func(_i): _load_available())
+	if HubLog:
+		HubLog.log_changed.connect(_refresh_console)
 	reload_installed()
+	_refresh_console()
 	call_deferred("_load_available")
+
+
+func _set_status(msg: String) -> void:
+	status.text = msg
+	if HubLog:
+		HubLog.append(msg)
+
+
+func _refresh_console() -> void:
+	if console == null:
+		return
+	if HubLog:
+		console.text = HubLog.get_text()
+		console.scroll_vertical = console.get_line_count()
 
 
 func reload_installed() -> void:
@@ -38,7 +56,7 @@ func reload_installed() -> void:
 
 
 func _load_available() -> void:
-	status.text = "Loading CDN catalog…"
+	_set_status("Loading CDN catalog…")
 	var channel := "release"
 	if channel_option.selected == 1:
 		channel = "nightly"
@@ -46,7 +64,8 @@ func _load_available() -> void:
 	available_list.clear()
 	_available_versions.clear()
 	if data == null:
-		status.text = CdnClient.get_last_error()
+		_set_status(CdnClient.get_last_error())
+		_refresh_console()
 		return
 	var versions: Array = []
 	if typeof(data) == TYPE_ARRAY:
@@ -70,15 +89,16 @@ func _load_available() -> void:
 			continue
 		_available_versions.append(ver)
 		available_list.add_item(ver)
-	# also show latest pointer
 	var latest: Variant = await CdnClient.latest(channel)
 	if typeof(latest) == TYPE_DICTIONARY and latest.has("version"):
-		status.text = "CDN %s latest: %s (%d listed)" % [channel, str(latest["version"]), available_list.item_count]
+		_set_status("CDN %s latest: %s (%d listed)" % [channel, str(latest["version"]), available_list.item_count])
 	else:
-		status.text = "%d version(s) from CDN" % available_list.item_count
+		_set_status("%d version(s) from CDN" % available_list.item_count)
+	_refresh_console()
 
 
 func _on_refresh() -> void:
+	_set_status("Refreshing editors…")
 	HubState.refresh_editors()
 	reload_installed()
 	await _load_available()
@@ -89,27 +109,34 @@ func _on_install() -> void:
 	var version := ""
 	if not sels.is_empty():
 		version = available_list.get_item_text(sels[0])
-	status.text = "Installing %s via blazium-cli…" % (version if not version.is_empty() else "default")
+	_set_status("Installing %s via blazium-cli…" % (version if not version.is_empty() else "default"))
 	var data: Variant = HubCli.install(version)
+	_refresh_console()
 	if data == null:
-		status.text = HubCli.get_last_error()
+		_set_status(HubCli.get_last_error())
+		_refresh_console()
 		return
-	status.text = "Installed"
+	_set_status("Installed")
 	HubState.refresh_editors()
 	reload_installed()
+	_refresh_console()
 
 
 func _on_uninstall() -> void:
 	var sels := installed_list.get_selected_items()
 	if sels.is_empty():
-		status.text = "Select an installed editor"
+		_set_status("Select an installed editor")
+		_refresh_console()
 		return
 	var version := str(installed_list.get_item_metadata(sels[0]))
-	status.text = "Uninstalling %s…" % version
+	_set_status("Uninstalling %s…" % version)
 	var data: Variant = HubCli.uninstall(version)
+	_refresh_console()
 	if data == null:
-		status.text = HubCli.get_last_error()
+		_set_status(HubCli.get_last_error())
+		_refresh_console()
 		return
-	status.text = "Uninstalled"
+	_set_status("Uninstalled")
 	HubState.refresh_editors()
 	reload_installed()
+	_refresh_console()

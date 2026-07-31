@@ -8,6 +8,9 @@ extends VBoxContainer
 @onready var check_upgrade_btn: Button = %CheckUpgradeBtn
 @onready var status: Label = %SettingsStatus
 @onready var cli_dialog: FileDialog = %CliFileDialog
+@onready var logs_edit: TextEdit = %LogsEdit
+@onready var copy_logs_btn: Button = %CopyLogsBtn
+@onready var clear_logs_btn: Button = %ClearLogsBtn
 
 
 func _ready() -> void:
@@ -21,9 +24,46 @@ func _ready() -> void:
 	close_tray_check.toggled.connect(_on_tray_toggled)
 	check_upgrade_btn.text = "Check for updates"
 	check_upgrade_btn.pressed.connect(_on_check_updates)
+	copy_logs_btn.pressed.connect(_on_copy_logs)
+	clear_logs_btn.pressed.connect(_on_clear_logs)
+	visibility_changed.connect(_on_visibility_changed)
 	if HubUpdates:
 		HubUpdates.status_changed.connect(_on_update_status)
+	if HubLog:
+		HubLog.log_changed.connect(_refresh_logs)
 	_load_install_path()
+	_refresh_logs()
+
+
+func _refresh_logs() -> void:
+	if logs_edit == null or HubLog == null:
+		return
+	var at_bottom := true
+	if logs_edit.get_line_count() > 0:
+		at_bottom = logs_edit.scroll_vertical >= maxi(0, logs_edit.get_line_count() - 4)
+	logs_edit.text = HubLog.get_text()
+	if at_bottom:
+		logs_edit.scroll_vertical = logs_edit.get_line_count()
+
+
+func _on_visibility_changed() -> void:
+	if visible:
+		_refresh_logs()
+
+
+func _on_copy_logs() -> void:
+	var text := logs_edit.text if logs_edit else ""
+	if HubLog:
+		text = HubLog.get_text()
+	DisplayServer.clipboard_set(text)
+	status.text = "Logs copied to clipboard"
+
+
+func _on_clear_logs() -> void:
+	if HubLog:
+		HubLog.clear()
+	status.text = "Logs cleared"
+	_refresh_logs()
 
 
 func _load_install_path() -> void:
@@ -38,11 +78,15 @@ func _on_cli_selected(path: String) -> void:
 	cli_path_edit.text = path
 	HubSettings.set_cli_path_value(path)
 	status.text = "CLI path saved"
+	if HubLog:
+		HubLog.append("CLI path saved: %s" % path)
 
 
 func _on_cli_submitted(text: String) -> void:
 	HubSettings.set_cli_path_value(text)
 	status.text = "CLI path saved"
+	if HubLog:
+		HubLog.append("CLI path saved: %s" % text)
 
 
 func _on_set_install() -> void:
@@ -53,8 +97,12 @@ func _on_set_install() -> void:
 	var data: Variant = HubCli.install_path(path)
 	if data == null:
 		status.text = HubCli.get_last_error()
+		if HubLog:
+			HubLog.append("ERROR: %s" % HubCli.get_last_error())
 		return
 	status.text = "Install path updated"
+	if HubLog:
+		HubLog.append("Install path updated: %s" % path)
 	_load_install_path()
 
 
@@ -65,6 +113,8 @@ func _on_tray_toggled(pressed: bool) -> void:
 
 func _on_check_updates() -> void:
 	status.text = "Checking for updates…"
+	if HubLog:
+		HubLog.append("Checking for updates…")
 	if HubUpdates:
 		HubUpdates.check_and_prompt(true)
 	else:
@@ -73,3 +123,5 @@ func _on_check_updates() -> void:
 
 func _on_update_status(msg: String) -> void:
 	status.text = msg
+	if HubLog and not msg.is_empty():
+		HubLog.append(msg)
