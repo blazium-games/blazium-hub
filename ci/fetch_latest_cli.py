@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import sys
+import time
 import urllib.request
 from pathlib import Path
 
@@ -20,7 +21,12 @@ def main() -> int:
     parser.add_argument("--out", required=True, help="Destination file path")
     args = parser.parse_args()
 
-    with urllib.request.urlopen(CLI_JSON, timeout=60) as resp:
+    # Cloudflare edge can serve stale cli.json for up to max-age; bust cache.
+    req = urllib.request.Request(
+        f"{CLI_JSON}?nocache={int(time.time())}",
+        headers={"Cache-Control": "no-cache", "Pragma": "no-cache"},
+    )
+    with urllib.request.urlopen(req, timeout=60) as resp:
         manifest = json.load(resp)
 
     latest = manifest.get("latest")
