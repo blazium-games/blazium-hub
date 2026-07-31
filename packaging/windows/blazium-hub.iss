@@ -8,6 +8,8 @@
 ;
 ; Silent install (any directory):
 ;   BlaziumHub-Setup-VERSION-x86_64.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="D:\Tools\Blazium"
+; Silent install and auto-launch Hub:
+;   ... /DIR="D:\Tools\Blazium" /LAUNCH
 
 #define MyAppName "Blazium Hub"
 #ifndef MyAppVersion
@@ -56,6 +58,7 @@ PrivilegesRequired=admin
 UninstallDisplayIcon={app}\Hub\{#MyAppExeName}
 ChangesAssociations=yes
 ChangesEnvironment=yes
+CloseApplications=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -77,7 +80,10 @@ Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\Hub\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
+; Interactive finish-page checkbox (skipped in silent mode).
 Filename: "{app}\Hub\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+; Silent/CLI: launch Hub only when /LAUNCH is passed.
+Filename: "{app}\Hub\{#MyAppExeName}"; Flags: nowait postinstall skipifnotsilent; Check: ShouldLaunchAfterSilent
 
 [Registry]
 Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "BLAZIUM"; ValueData: "{app}"; Flags: uninsdeletevalue
@@ -89,6 +95,24 @@ Root: HKCR; Subkey: "blazium\shell\open\command"; ValueType: string; ValueData: 
 [Code]
 const
   EnvironmentKey = 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment';
+
+function CmdLineParamExists(const Param: string): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 1 to ParamCount do
+    if CompareText(ParamStr(I), Param) = 0 then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
+function ShouldLaunchAfterSilent: Boolean;
+begin
+  Result := CmdLineParamExists('/LAUNCH');
+end;
 
 function NeedsAddPath(Param: string): boolean;
 var

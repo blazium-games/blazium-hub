@@ -1205,6 +1205,7 @@ jobs:
           \`\`\`
           BlaziumHub-Setup-${VER}-x86_64.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR=\"D:\\\\Tools\\\\Blazium\"
           \`\`\`
+          Add \`/LAUNCH\` to start Hub after a silent install.
           "
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "${FILES[@]}" --clobber

@@ -29,6 +29,23 @@ func _ready() -> void:
 	set_process(true)
 
 
+func _release_lock() -> void:
+	set_process(false)
+	_clients.clear()
+	if _server != null:
+		_server.stop()
+		_server = null
+
+
+func _exit_tree() -> void:
+	_release_lock()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_PREDELETE:
+		_release_lock()
+
+
 func _process(_delta: float) -> void:
 	if _server and _server.is_connection_available():
 		var peer := _server.take_connection()
