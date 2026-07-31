@@ -104,13 +104,21 @@ func _on_refresh() -> void:
 	await _load_available()
 
 
+func _set_action_busy(busy: bool) -> void:
+	install_btn.disabled = busy
+	uninstall_btn.disabled = busy
+	refresh_btn.disabled = busy
+
+
 func _on_install() -> void:
 	var sels := available_list.get_selected_items()
 	var version := ""
 	if not sels.is_empty():
 		version = available_list.get_item_text(sels[0])
 	_set_status("Installing %s via blazium-cli…" % (version if not version.is_empty() else "default"))
-	var data: Variant = HubCli.install(version)
+	_set_action_busy(true)
+	var data: Variant = await HubCli.install_async(version)
+	_set_action_busy(false)
 	_refresh_console()
 	if data == null:
 		_set_status(HubCli.get_last_error())
@@ -130,7 +138,9 @@ func _on_uninstall() -> void:
 		return
 	var version := str(installed_list.get_item_metadata(sels[0]))
 	_set_status("Uninstalling %s…" % version)
-	var data: Variant = HubCli.uninstall(version)
+	_set_action_busy(true)
+	var data: Variant = await HubCli.uninstall_async(version)
+	_set_action_busy(false)
 	_refresh_console()
 	if data == null:
 		_set_status(HubCli.get_last_error())

@@ -44,9 +44,17 @@ func _on_add() -> void:
 	file_dialog.popup_centered_ratio(0.6)
 
 
+func _set_action_busy(busy: bool) -> void:
+	add_btn.disabled = busy
+	remove_btn.disabled = busy
+	open_btn.disabled = busy
+
+
 func _on_dir_selected(dir: String) -> void:
 	status.text = "Adding…"
-	var data: Variant = HubCli.projects_add(dir)
+	_set_action_busy(true)
+	var data: Variant = await HubCli.projects_add_async(dir)
+	_set_action_busy(false)
 	if data == null:
 		status.text = HubCli.get_last_error()
 		return
@@ -59,7 +67,10 @@ func _on_remove() -> void:
 	if path.is_empty():
 		status.text = "Select a project first"
 		return
-	var data: Variant = HubCli.projects_remove(path)
+	status.text = "Removing…"
+	_set_action_busy(true)
+	var data: Variant = await HubCli.projects_remove_async(path)
+	_set_action_busy(false)
 	if data == null:
 		status.text = HubCli.get_last_error()
 		return
@@ -73,7 +84,9 @@ func _on_open() -> void:
 		status.text = "Select a project first"
 		return
 	status.text = "Opening via blazium-cli…"
-	var data: Variant = HubCli.open_project(path)
+	_set_action_busy(true)
+	var data: Variant = await HubCli.open_project_async(path)
+	_set_action_busy(false)
 	if data == null:
 		status.text = HubCli.get_last_error()
 		return

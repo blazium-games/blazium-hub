@@ -5,10 +5,19 @@ signal command_finished(ok: bool, data: Variant, error: String)
 
 var cli_path: String = ""
 var _last_error: String = ""
+var _async_busy: bool = false
+var _async_mutex := Mutex.new()
+var _async_done: bool = false
+var _async_exec: Dictionary = {}
+var _async_thread: Thread
 
 
 func get_last_error() -> String:
 	return _last_error
+
+
+func is_busy() -> bool:
+	return _async_busy
 
 
 func set_cli_path(path: String) -> void:
@@ -139,13 +148,8 @@ func parse_json_output(text: String, code: int) -> Variant:
 	return data
 
 
-func run_json(args: PackedStringArray) -> Variant:
-	_last_error = ""
-	var bin := resolve_cli()
-	if bin.is_empty():
-		return null
-	var argv: PackedStringArray = ["--json"]
-	argv.append_array(args)
+## Pure OS.execute — safe to call from a worker thread (no HubLog/UI).
+func _execute_json(bin: String, argv: PackedStringArray) -> Dictionary:
 	var output: Array = []
 	var code := OS.execute(bin, argv, output, true, false)
 	var text := ""
@@ -154,13 +158,78 @@ func run_json(args: PackedStringArray) -> Variant:
 			text = str(line)
 		else:
 			text += "\n" + str(line)
+	return {"code": code, "text": text, "bin": bin, "argv": argv}
+
+
+func _finish_execute(exec: Dictionary) -> Variant:
+	var code: int = int(exec.get("code", 1))
+	var text: String = str(exec.get("text", ""))
+	var bin: String = str(exec.get("bin", ""))
+	var argv_var: Variant = exec.get("argv", PackedStringArray())
+	var argv: PackedStringArray = argv_var if typeof(argv_var) == TYPE_PACKED_STRING_ARRAY else PackedStringArray()
 	var joined_args := " ".join(argv)
 	if HubLog:
 		HubLog.append_block("CLI %s %s (exit %d)" % [bin, joined_args, code], text)
 	var data: Variant = parse_json_output(text, code)
 	if data == null and HubLog and not _last_error.is_empty():
 		HubLog.append("ERROR: %s" % _last_error)
+	var ok := data != null
+	command_finished.emit(ok, data, _last_error)
 	return data
+
+
+func run_json(args: PackedStringArray) -> Variant:
+	_last_error = ""
+	var bin := resolve_cli()
+	if bin.is_empty():
+		return null
+	var argv: PackedStringArray = ["--json"]
+	argv.append_array(args)
+	return _finish_execute(_execute_json(bin, argv))
+
+
+func _async_worker(bin: String, argv: PackedStringArray) -> void:
+	var exec: Dictionary = _execute_json(bin, argv)
+	_async_mutex.lock()
+	_async_exec = exec
+	_async_done = true
+	_async_mutex.unlock()
+
+
+## Run blazium-cli off the main thread so the Hub UI stays responsive.
+func run_json_async(args: PackedStringArray) -> Variant:
+	if _async_busy:
+		_last_error = "Another CLI operation is already running"
+		if HubLog:
+			HubLog.append("ERROR: %s" % _last_error)
+		return null
+	_last_error = ""
+	var bin := resolve_cli()
+	if bin.is_empty():
+		return null
+	var argv: PackedStringArray = ["--json"]
+	argv.append_array(args)
+	_async_busy = true
+	_async_mutex.lock()
+	_async_done = false
+	_async_exec = {}
+	_async_mutex.unlock()
+	_async_thread = Thread.new()
+	_async_thread.start(_async_worker.bind(bin, argv))
+	while true:
+		_async_mutex.lock()
+		var done := _async_done
+		_async_mutex.unlock()
+		if done:
+			break
+		await get_tree().process_frame
+	_async_thread.wait_to_finish()
+	_async_thread = null
+	_async_mutex.lock()
+	var exec: Dictionary = _async_exec.duplicate(true)
+	_async_mutex.unlock()
+	_async_busy = false
+	return _finish_execute(exec)
 
 
 func editors() -> Variant:
@@ -174,8 +243,19 @@ func install(version: String = "") -> Variant:
 	return run_json(args)
 
 
+func install_async(version: String = "") -> Variant:
+	var args := PackedStringArray(["install"])
+	if not version.is_empty():
+		args.append(version)
+	return await run_json_async(args)
+
+
 func uninstall(version: String) -> Variant:
 	return run_json(PackedStringArray(["uninstall", version]))
+
+
+func uninstall_async(version: String) -> Variant:
+	return await run_json_async(PackedStringArray(["uninstall", version]))
 
 
 func install_path(path: String = "") -> Variant:
@@ -192,12 +272,24 @@ func projects_add(path: String) -> Variant:
 	return run_json(PackedStringArray(["projects", "add", path]))
 
 
+func projects_add_async(path: String) -> Variant:
+	return await run_json_async(PackedStringArray(["projects", "add", path]))
+
+
 func projects_remove(path: String) -> Variant:
 	return run_json(PackedStringArray(["projects", "remove", path]))
 
 
+func projects_remove_async(path: String) -> Variant:
+	return await run_json_async(PackedStringArray(["projects", "remove", path]))
+
+
 func open_project(path: String) -> Variant:
 	return run_json(PackedStringArray(["open", path]))
+
+
+func open_project_async(path: String) -> Variant:
+	return await run_json_async(PackedStringArray(["open", path]))
 
 
 func load_project(path: String) -> Variant:
@@ -223,6 +315,10 @@ func update_apply_cli() -> Variant:
 	return run_json(PackedStringArray(["update", "apply", "--product", "cli"]))
 
 
+func update_apply_cli_async() -> Variant:
+	return await run_json_async(PackedStringArray(["update", "apply", "--product", "cli"]))
+
+
 func update_apply_hub(current_version: String = "", install_root: String = "") -> Variant:
 	var args := PackedStringArray(["update", "apply", "--product", "hub"])
 	if not current_version.is_empty():
@@ -234,9 +330,24 @@ func update_apply_hub(current_version: String = "", install_root: String = "") -
 	return run_json(args)
 
 
+func update_apply_hub_async(current_version: String = "", install_root: String = "") -> Variant:
+	var args := PackedStringArray(["update", "apply", "--product", "hub"])
+	if not current_version.is_empty():
+		args.append("--current")
+		args.append(current_version)
+	if not install_root.is_empty():
+		args.append("--install-root")
+		args.append(install_root)
+	return await run_json_async(args)
+
+
 func templates_download(version: String) -> Variant:
 	var args := PackedStringArray(["templates", "download", version, "--tpz"])
 	return run_json(args)
+
+
+func templates_download_async(version: String) -> Variant:
+	return await run_json_async(PackedStringArray(["templates", "download", version, "--tpz"]))
 
 
 func handle_uri(uri: String) -> Variant:

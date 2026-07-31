@@ -135,14 +135,14 @@ func _on_accepted() -> void:
 	var ok := false
 	match product:
 		"cli":
-			var r: Variant = HubCli.update_apply_cli()
+			var r: Variant = await HubCli.update_apply_cli_async()
 			ok = r != null
 			if not ok:
 				_last_summary = HubCli.get_last_error()
 			else:
 				_last_summary = "blazium-cli updated to %s" % latest
 		"hub":
-			var r: Variant = HubCli.update_apply_hub(hub_version(), install_root())
+			var r: Variant = await HubCli.update_apply_hub_async(hub_version(), install_root())
 			ok = r != null
 			if not ok:
 				_last_summary = HubCli.get_last_error()
@@ -155,7 +155,7 @@ func _on_accepted() -> void:
 			get_tree().quit()
 			return
 		"editor":
-			var r: Variant = HubCli.install(latest)
+			var r: Variant = await HubCli.install_async(latest)
 			ok = r != null
 			if not ok:
 				_last_summary = HubCli.get_last_error()
@@ -164,7 +164,7 @@ func _on_accepted() -> void:
 				if HubState and HubState.has_method("refresh_all"):
 					HubState.refresh_all()
 		"templates":
-			var r: Variant = HubCli.templates_download(latest)
+			var r: Variant = await HubCli.templates_download_async(latest)
 			ok = r != null
 			if not ok:
 				_last_summary = HubCli.get_last_error()
