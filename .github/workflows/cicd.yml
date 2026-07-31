@@ -205,9 +205,16 @@ jobs:
 
       - name: Stage artifacts
         run: |
+          set -euo pipefail
           mkdir -p .ci/out/linux
-          cp "$(find .ci/engine/bin -type f -name 'blazium*editor*' | head -n1)" .ci/out/linux/editor
-          cp "$(find .ci/engine/bin -type f -name 'blazium*template_release*' | head -n1)" .ci/out/linux/template_release
+          # Only bin/ top-level product binaries — not bin/obj/*.o (blazium_default_theme.* matches blazium*editor*).
+          EDITOR=$(find .ci/engine/bin -maxdepth 1 -type f -name 'blazium.*.editor.*' ! -name '*.console*' ! -name '*.o' | head -n1)
+          TPL=$(find .ci/engine/bin -maxdepth 1 -type f -name 'blazium.*.template_release.*' ! -name '*.console*' ! -name '*.o' | head -n1)
+          test -n "${EDITOR:-}" && test -n "${TPL:-}"
+          test "$(stat -c%s "$EDITOR")" -ge 10485760
+          test "$(stat -c%s "$TPL")" -ge 5242880
+          cp "$EDITOR" .ci/out/linux/editor
+          cp "$TPL" .ci/out/linux/template_release
           chmod +x .ci/out/linux/editor .ci/out/linux/template_release
           ls -lh .ci/out/linux/
 
@@ -345,9 +352,16 @@ jobs:
       - name: Stage artifacts
         shell: bash
         run: |
+          set -euo pipefail
           mkdir -p .ci/out/windows
-          cp "$(find .ci/engine/bin -type f \( -name 'blazium*editor*.exe' -o -name '*editor*.exe' \) | head -n1)" .ci/out/windows/editor.exe
-          cp "$(find .ci/engine/bin -type f \( -name 'blazium*template_release*.exe' -o -name '*template_release*.exe' \) | head -n1)" .ci/out/windows/template_release.exe
+          # Top-level GUI .exe only — not *.console.exe wrappers and not bin/obj.
+          EDITOR=$(find .ci/engine/bin -maxdepth 1 -type f -name 'blazium.*.editor.*.exe' ! -name '*.console.exe' | head -n1)
+          TPL=$(find .ci/engine/bin -maxdepth 1 -type f -name 'blazium.*.template_release.*.exe' ! -name '*.console.exe' | head -n1)
+          test -n "${EDITOR:-}" && test -n "${TPL:-}"
+          test "$(stat -c%s "$EDITOR")" -ge 10485760
+          test "$(stat -c%s "$TPL")" -ge 5242880
+          cp "$EDITOR" .ci/out/windows/editor.exe
+          cp "$TPL" .ci/out/windows/template_release.exe
           ls -lh .ci/out/windows/
 
       - uses: actions/upload-artifact@v4
