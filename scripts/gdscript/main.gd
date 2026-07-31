@@ -19,6 +19,8 @@ func _ready() -> void:
 		HubState.refreshed.connect(_on_refreshed)
 	if UriRouter:
 		UriRouter.toast.connect(_on_error)
+	if HubUpdates:
+		HubUpdates.status_changed.connect(_on_error)
 	call_deferred("_initial_refresh")
 
 
@@ -28,6 +30,12 @@ func _initial_refresh() -> void:
 	if SystemTray and SystemTray.has_method("refresh_menu"):
 		SystemTray.refresh_menu()
 	status_label.text = "Ready"
+	call_deferred("_launch_update_check")
+
+
+func _launch_update_check() -> void:
+	if HubUpdates:
+		HubUpdates.check_and_prompt(false)
 
 
 func _on_error(msg: String) -> void:

@@ -155,5 +155,36 @@ func upgrade_dry_run() -> Variant:
 	return run_json(PackedStringArray(["upgrade", "--dry-run"]))
 
 
+func update_check(product: String = "all", hub_current: String = "", install_root: String = "") -> Variant:
+	var args := PackedStringArray(["update", "check", "--product", product])
+	if not hub_current.is_empty():
+		args.append("--current")
+		args.append(hub_current)
+	if not install_root.is_empty():
+		args.append("--install-root")
+		args.append(install_root)
+	return run_json(args)
+
+
+func update_apply_cli() -> Variant:
+	return run_json(PackedStringArray(["update", "apply", "--product", "cli"]))
+
+
+func update_apply_hub(current_version: String = "", install_root: String = "") -> Variant:
+	var args := PackedStringArray(["update", "apply", "--product", "hub"])
+	if not current_version.is_empty():
+		args.append("--current")
+		args.append(current_version)
+	if not install_root.is_empty():
+		args.append("--install-root")
+		args.append(install_root)
+	return run_json(args)
+
+
+func templates_download(version: String) -> Variant:
+	var args := PackedStringArray(["templates", "download", version, "--tpz"])
+	return run_json(args)
+
+
 func handle_uri(uri: String) -> Variant:
 	return run_json(PackedStringArray(["handle-uri", uri]))

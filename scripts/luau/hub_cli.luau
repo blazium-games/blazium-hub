@@ -183,6 +183,41 @@ local HubCli = {
 		return self:run_json({ "upgrade", "--dry-run" })
 	end,
 
+	update_check = function(self, product, hub_current, install_root)
+		product = product or "all"
+		local args = { "update", "check", "--product", product }
+		if hub_current and hub_current ~= "" then
+			table.insert(args, "--current")
+			table.insert(args, hub_current)
+		end
+		if install_root and install_root ~= "" then
+			table.insert(args, "--install-root")
+			table.insert(args, install_root)
+		end
+		return self:run_json(args)
+	end,
+
+	update_apply_cli = function(self)
+		return self:run_json({ "update", "apply", "--product", "cli" })
+	end,
+
+	update_apply_hub = function(self, current_version, install_root)
+		local args = { "update", "apply", "--product", "hub" }
+		if current_version and current_version ~= "" then
+			table.insert(args, "--current")
+			table.insert(args, current_version)
+		end
+		if install_root and install_root ~= "" then
+			table.insert(args, "--install-root")
+			table.insert(args, install_root)
+		end
+		return self:run_json(args)
+	end,
+
+	templates_download = function(self, version)
+		return self:run_json({ "templates", "download", version, "--tpz" })
+	end,
+
 	handle_uri = function(self, uri)
 		return self:run_json({ "handle-uri", uri })
 	end,

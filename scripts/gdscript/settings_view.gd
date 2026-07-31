@@ -19,7 +19,10 @@ func _ready() -> void:
 	cli_path_edit.text_submitted.connect(_on_cli_submitted)
 	set_install_btn.pressed.connect(_on_set_install)
 	close_tray_check.toggled.connect(_on_tray_toggled)
-	check_upgrade_btn.pressed.connect(_on_upgrade)
+	check_upgrade_btn.text = "Check for updates"
+	check_upgrade_btn.pressed.connect(_on_check_updates)
+	if HubUpdates:
+		HubUpdates.status_changed.connect(_on_update_status)
 	_load_install_path()
 
 
@@ -60,10 +63,13 @@ func _on_tray_toggled(pressed: bool) -> void:
 	HubSettings.save_settings()
 
 
-func _on_upgrade() -> void:
-	status.text = "Checking CLI upgrade…"
-	var data: Variant = HubCli.upgrade_dry_run()
-	if data == null:
-		status.text = HubCli.get_last_error()
-		return
-	status.text = str(data)
+func _on_check_updates() -> void:
+	status.text = "Checking for updates…"
+	if HubUpdates:
+		HubUpdates.check_and_prompt(true)
+	else:
+		status.text = "HubUpdates unavailable"
+
+
+func _on_update_status(msg: String) -> void:
+	status.text = msg

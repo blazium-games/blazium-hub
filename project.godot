@@ -19,6 +19,7 @@ HubCli="*res://scripts/gdscript/hub_cli.gd"
 CdnClient="*res://scripts/gdscript/cdn_client.gd"
 HubState="*res://scripts/gdscript/hub_state.gd"
 UriRouter="*res://scripts/gdscript/uri_router.gd"
+HubUpdates="*res://scripts/gdscript/hub_updates.gd"
 SingleInstance="*res://autoload/single_instance.gd"
 SystemTray="*res://autoload/system_tray.gd"
 
