@@ -188,8 +188,8 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.force_engine_rebuild }}" == "true" ]]; then
             FORCE="-force-${{ github.run_id }}"
           fi
-          # -pearch1: invalidate caches that staged wrong PE arch (Windows x86_32 linked with x64 MSVC).
-          KEY="hub-engine-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.target }}-${{ needs.resolve-engine.outputs.blazium_ref }}-${{ hashFiles('ci/hub_scons.env') }}-${ENC}-pearch1${FORCE}"
+          # -pearch2: bust caches from VCVARS path linking x86_32 without /MACHINE:X86 (x64 PE).
+          KEY="hub-engine-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.target }}-${{ needs.resolve-engine.outputs.blazium_ref }}-${{ hashFiles('ci/hub_scons.env') }}-${ENC}-pearch2${FORCE}"
           echo "key=$KEY" >> "$GITHUB_OUTPUT"
           echo "Binary cache key: $KEY"
 
@@ -209,6 +209,41 @@ jobs:
           path: .ci/engine
           submodules: recursive
           fetch-depth: 1
+
+      # Blazium setup_msvc_manual never sets TARGET_ARCH (unlike setup_msvc_auto), so under
+      # ilammy/msvc-dev-cmd the linker emits x64 PE for arch=x86_32. Mirror auto's mapping.
+      - name: Patch MSVC VCVARS TARGET_ARCH
+        if: steps.bin-cache.outputs.cache-hit != 'true' && runner.os == 'Windows'
+        run: |
+          set -euo pipefail
+          python <<'PY'
+          from pathlib import Path
+
+          p = Path(".ci/engine/platform/windows/detect.py")
+          text = p.read_text(encoding="utf-8")
+          marker = "# Hub CI: set TARGET_ARCH for VCVARS/msvc-dev-cmd"
+          if marker in text:
+              print("detect.py already patched")
+              raise SystemExit(0)
+          needle = (
+              '    print("Using VCVARS-determined MSVC, arch %s" % (env_arch))\n\n'
+              "    # Replace any early-loaded mingw/default tools with MSVC (same as setup_msvc_auto).\n"
+          )
+          insert = (
+              '    print("Using VCVARS-determined MSVC, arch %s" % (env_arch))\n\n'
+              f"    {marker}\n"
+              '    msvc_arch_aliases = {"x86_32": "x86", "arm32": "arm"}\n'
+              '    if env["arch"] in msvc_arch_aliases:\n'
+              '        env["TARGET_ARCH"] = msvc_arch_aliases[env["arch"]]\n'
+              "    else:\n"
+              '        env["TARGET_ARCH"] = env["arch"]\n\n'
+              "    # Replace any early-loaded mingw/default tools with MSVC (same as setup_msvc_auto).\n"
+          )
+          if needle not in text:
+              raise SystemExit("detect.py patch anchor not found; update Hub CI patch")
+          p.write_text(text.replace(needle, insert, 1), encoding="utf-8")
+          print("Patched setup_msvc_manual to set TARGET_ARCH")
+          PY
 
       - name: Free disk space (Linux)
         if: steps.bin-cache.outputs.cache-hit != 'true' && runner.os == 'Linux'
@@ -313,9 +348,20 @@ jobs:
           else
             unset SCRIPT_AES256_ENCRYPTION_KEY || true
           fi
+          # Blazium setup_msvc_manual (VCVARS path) never sets SCons TARGET_ARCH, so MSVC
+          # link.exe defaults to x64 PE even when cl.exe is HostX86\x86. Force /MACHINE:X86.
+          LINK_EXTRA=""
+          if [[ "${{ matrix.platform }}" == "windows" && "${{ matrix.arch }}" == "x86_32" ]]; then
+            LINK_EXTRA='linkflags=/MACHINE:X86'
+            if [[ -n "${LIB:-}" ]]; then
+              LIB="$(printf '%s' "$LIB" | tr ';' '\n' | grep -viE '[\\/](x64|arm64)(\\|/|$)' | paste -sd';' - || true)"
+              export LIB
+              echo "Filtered LIB for x86_32 (no x64/arm64): $LIB"
+            fi
+          fi
           # shellcheck disable=SC2046,SC2086
           scons -j"$JOBS" platform=${{ matrix.platform }} target=${{ matrix.target }} arch=${{ matrix.arch }} \
-            $(cat ../flags/common.txt) $EXTRA \
+            $(cat ../flags/common.txt) $EXTRA $LINK_EXTRA \
             compiledb=no verbose=yes
           ls -lh bin/ || true
 
