@@ -62,10 +62,11 @@ if ($proto -notlike "*$($CustomDir.Replace('\','*'))*" -and $proto -notlike "*$C
     }
 }
 
-& $cli version 2>$null
-if ($LASTEXITCODE -ne 0) {
-    & $cli --help 2>$null | Out-Null
-}
+# Native stderr ("unknown command") becomes a terminating error under Stop; ignore it.
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+& $cli --help *> $null
+$ErrorActionPreference = $prevEap
 if (-not (Test-Path $cli)) { throw "cli vanished" }
 
 Write-Host "=== Seed user markers ==="
