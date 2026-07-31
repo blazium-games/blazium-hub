@@ -872,6 +872,7 @@ jobs:
           set -euo pipefail
           test -f build/package/windows/Hub/BlaziumHub.exe
           test -f build/package/windows/blazium-cli.exe
+          mkdir -p signed/Hub signed/cli
           ls -lh build/package/windows/ build/package/windows/Hub/
 
       - uses: bioblaze/sslcom-code-signer@v5
@@ -883,7 +884,7 @@ jobs:
           credential_id: ${{ secrets.CREDENTIAL_ID }}
           totp_secret: ${{ secrets.ES_TOTP_SECRET }}
           file_path: ./build/package/windows/Hub/BlaziumHub.exe
-          output_path: ./build/package/windows/Hub
+          output_path: ./signed/Hub
           environment_name: PROD
 
       - uses: bioblaze/sslcom-code-signer@v5
@@ -895,14 +896,16 @@ jobs:
           credential_id: ${{ secrets.CREDENTIAL_ID }}
           totp_secret: ${{ secrets.ES_TOTP_SECRET }}
           file_path: ./build/package/windows/blazium-cli.exe
-          output_path: ./build/package/windows
+          output_path: ./signed/cli
           environment_name: PROD
 
-      - name: Assert signed binaries
+      - name: Replace package tree with signed binaries
         run: |
           set -euo pipefail
-          test -f build/package/windows/Hub/BlaziumHub.exe
-          test -f build/package/windows/blazium-cli.exe
+          test -f signed/Hub/BlaziumHub.exe
+          test -f signed/cli/blazium-cli.exe
+          cp -f signed/Hub/BlaziumHub.exe build/package/windows/Hub/BlaziumHub.exe
+          cp -f signed/cli/blazium-cli.exe build/package/windows/blazium-cli.exe
           test "$(stat -c%s build/package/windows/Hub/BlaziumHub.exe)" -ge 1048576
           test "$(stat -c%s build/package/windows/blazium-cli.exe)" -ge 1048576
           ls -lh build/package/windows/ build/package/windows/Hub/
@@ -1017,6 +1020,7 @@ jobs:
           ARCH="${{ matrix.arch }}"
           SETUP="packaging/windows/Output/BlaziumHub-Setup-${VER}-${ARCH}.exe"
           test -f "$SETUP"
+          mkdir -p signed/setup
           echo "path=$SETUP" >> "$GITHUB_OUTPUT"
           echo "name=$(basename "$SETUP")" >> "$GITHUB_OUTPUT"
           ls -lh packaging/windows/Output/
@@ -1030,18 +1034,19 @@ jobs:
           credential_id: ${{ secrets.CREDENTIAL_ID }}
           totp_secret: ${{ secrets.ES_TOTP_SECRET }}
           file_path: ${{ steps.setup.outputs.path }}
-          output_path: ./packaging/windows/Output
+          output_path: ./signed/setup
           environment_name: PROD
 
       - name: Stage signed installer artifact
         run: |
           set -euo pipefail
           VER="${{ needs.resolve-engine.outputs.version }}"
-          SETUP="${{ steps.setup.outputs.path }}"
-          test -f "$SETUP"
-          test "$(stat -c%s "$SETUP")" -ge 1048576
+          NAME="${{ steps.setup.outputs.name }}"
+          SIGNED="signed/setup/${NAME}"
+          test -f "$SIGNED"
+          test "$(stat -c%s "$SIGNED")" -ge 1048576
           mkdir -p "upload/windows/${VER}"
-          cp "$SETUP" "upload/windows/${VER}/"
+          cp "$SIGNED" "upload/windows/${VER}/"
           ls -lh "upload/windows/${VER}/"
 
       - uses: actions/upload-artifact@v4
