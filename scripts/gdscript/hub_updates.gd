@@ -17,6 +17,7 @@ var _busy: bool = false
 var _dialog: ConfirmationDialog
 var _pending: Dictionary = {}
 var _last_summary: String = ""
+var _hub_includes_cli: bool = false
 
 
 func get_last_summary() -> String:
@@ -45,6 +46,42 @@ func install_root() -> String:
 	return base
 
 
+## True when catalog reports a Hub update (ignores session dismissals).
+## While true, standalone CLI updates are suppressed — Hub ships the newest CLI.
+func hub_update_outstanding(products: Array) -> bool:
+	return _find_product_status(products, "hub") != null
+
+
+func _find_product_status(products: Array, name: String) -> Variant:
+	for item in products:
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		if str(item.get("product", "")) != name:
+			continue
+		if not bool(item.get("update_available", false)):
+			continue
+		if not str(item.get("error", "")).is_empty():
+			continue
+		return item
+	return null
+
+
+## Build ordered update prompt queue. Skips CLI when a Hub update is outstanding.
+func build_update_queue(products: Array, dismissed: Dictionary) -> Array:
+	var hub_outstanding := hub_update_outstanding(products)
+	var queue: Array = []
+	for name in PRODUCT_ORDER:
+		if name == "cli" and hub_outstanding:
+			continue
+		if dismissed.has(name):
+			continue
+		var item: Variant = _find_product_status(products, name)
+		if item == null:
+			continue
+		queue.append(item)
+	return queue
+
+
 func check_and_prompt(clear_session_dismissals: bool = false) -> void:
 	if _busy:
 		return
@@ -65,21 +102,10 @@ func check_and_prompt(clear_session_dismissals: bool = false) -> void:
 		var p = data.get("products", [])
 		if typeof(p) == TYPE_ARRAY:
 			products = p
-	_queue.clear()
-	for name in PRODUCT_ORDER:
-		for item in products:
-			if typeof(item) != TYPE_DICTIONARY:
-				continue
-			if str(item.get("product", "")) != name:
-				continue
-			if not bool(item.get("update_available", false)):
-				continue
-			if _dismissed.has(name):
-				continue
-			if not str(item.get("error", "")).is_empty():
-				continue
-			_queue.append(item)
-			break
+	_hub_includes_cli = (
+		hub_update_outstanding(products) and _find_product_status(products, "cli") != null
+	)
+	_queue = build_update_queue(products, _dismissed)
 	if _queue.is_empty():
 		_last_summary = "All products up to date"
 		status_changed.emit(_last_summary)
@@ -113,6 +139,8 @@ func _show_next() -> void:
 	var cur := str(_pending.get("current_version", ""))
 	var latest := str(_pending.get("latest_version", ""))
 	var body := "%s %s → %s is available.\nUpdate now?" % [label, cur if not cur.is_empty() else "(none)", latest]
+	if product == "hub" and _hub_includes_cli:
+		body += "\nThis Hub update includes the latest blazium-cli."
 	_ensure_dialog()
 	_dialog.dialog_text = body
 	_dialog.popup_centered()
