@@ -23,12 +23,10 @@ source /etc/profile.d/blazium.sh
 test "${BLAZIUM}" = "/opt/blazium"
 command -v blazium-cli >/dev/null
 command -v blazium >/dev/null
-blazium-cli --help >/dev/null || blazium-cli -h >/dev/null || true
-# CLI may use cobra without --help exit 0 on all versions; accept any exit if binary runs
-/opt/blazium/bin/blazium-cli version >/dev/null 2>&1 \
-  || /opt/blazium/bin/blazium-cli --version >/dev/null 2>&1 \
-  || /opt/blazium/bin/blazium-cli help >/dev/null 2>&1 \
-  || test -x /opt/blazium/bin/blazium-cli
+echo "=== blazium-cli version ==="
+VER_OUT="$(/opt/blazium/bin/blazium-cli version)"
+test -n "$VER_OUT"
+echo "$VER_OUT"
 
 echo "=== Seed user markers ==="
 mkdir -p "$HOME/.config/blazium" "$HOME/.local/share/blazium"

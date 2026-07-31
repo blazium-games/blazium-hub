@@ -62,11 +62,12 @@ if ($proto -notlike "*$($CustomDir.Replace('\','*'))*" -and $proto -notlike "*$C
     }
 }
 
-# Native stderr ("unknown command") becomes a terminating error under Stop; ignore it.
-$prevEap = $ErrorActionPreference
-$ErrorActionPreference = "Continue"
-& $cli --help *> $null
-$ErrorActionPreference = $prevEap
+Write-Host "=== blazium-cli version ==="
+$verOut = & $cli version 2>&1
+if ($LASTEXITCODE -ne 0) { throw "blazium-cli version exit $LASTEXITCODE: $verOut" }
+$verText = ($verOut | Out-String).Trim()
+if (-not $verText) { throw "blazium-cli version produced empty output" }
+Write-Host $verText
 if (-not (Test-Path $cli)) { throw "cli vanished" }
 
 Write-Host "=== Seed user markers ==="
