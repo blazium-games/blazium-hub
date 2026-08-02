@@ -80,3 +80,7 @@ func test_010_uri_router_luau() -> void:
 	assert_true(node.has_method("is_hub_show_uri"), "is_hub_show_uri")
 	assert_true(bool(node.call("is_hub_show_uri", "blazium://hub")), "luau hub uri")
 	assert_false(bool(node.call("is_hub_show_uri", "blazium://open?path=x")), "luau open uri")
+	assert_false(
+		bool(node.call("is_hub_show_uri", "blazium://register?path=x&version=1")),
+		"luau register uri"
+	)

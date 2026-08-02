@@ -51,8 +51,8 @@ if (-not $proto -or ($proto -notlike "*$CustomDir*")) {
     # Wow6432Node / HKCR merge
     $proto = (Get-ItemProperty -Path "Registry::HKEY_CLASSES_ROOT\blazium\shell\open\command" -ErrorAction SilentlyContinue)."(default)"
 }
-if (-not $proto -or ($proto -notlike "*BlaziumHub.exe*")) {
-    throw "protocol command missing Hub exe: $proto"
+if (-not $proto -or ($proto -notlike "*blazium-cli.exe*" -and $proto -notlike "*handle-uri*")) {
+    throw "protocol command missing blazium-cli handle-uri: $proto"
 }
 if ($proto -notlike "*$($CustomDir.Replace('\','*'))*" -and $proto -notlike "*$CustomDir*") {
     # Allow forward/back slash variance
@@ -69,6 +69,47 @@ $verText = ($verOut | Out-String).Trim()
 if (-not $verText) { throw "blazium-cli version produced empty output" }
 Write-Host $verText
 if (-not (Test-Path $cli)) { throw "cli vanished" }
+
+function Assert-HubRemoteJson([string]$Path, [string]$Label) {
+    if (-not (Test-Path $Path)) { throw "missing $Label hub_remote.json: $Path" }
+    $obj = Get-Content -Raw -Path $Path | ConvertFrom-Json
+    $tok = [string]$obj.token
+    if ($tok.Length -lt 32) { throw "$Label hub_remote token too short ($($tok.Length)): $Path" }
+    return $tok
+}
+
+Write-Host "=== Assert hub_remote.json (machine and/or user) ==="
+$machineRemote = Join-Path $env:PROGRAMDATA "blazium\hub_remote.json"
+$userRemote = Join-Path $env:APPDATA "blazium\hub_remote.json"
+$machineTok = $null
+$userTok = $null
+if (Test-Path $machineRemote) { $machineTok = Assert-HubRemoteJson $machineRemote "machine" }
+if (Test-Path $userRemote) { $userTok = Assert-HubRemoteJson $userRemote "user" }
+if (-not $machineTok -and -not $userTok) {
+    throw "neither machine nor user hub_remote.json exists after install"
+}
+$kind = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Blazium\Hub" -ErrorAction SilentlyContinue).InstallKind
+if ($kind -ne "fresh") { throw "InstallKind='$kind' expected 'fresh' after first install" }
+Write-Host "InstallKind=$kind machine=$([bool]$machineTok) user=$([bool]$userTok)"
+
+$tokenBeforeUpgrade = if ($userTok) { $userTok } else { $machineTok }
+
+Write-Host "=== Silent reinstall (upgrade) ==="
+$p2 = Start-Process -FilePath $SetupPath -ArgumentList @(
+    "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-",
+    "/DIR=$CustomDir"
+) -Wait -PassThru
+if ($p2.ExitCode -ne 0) { throw "Upgrade installer exit $($p2.ExitCode)" }
+$kind2 = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Blazium\Hub" -ErrorAction SilentlyContinue).InstallKind
+if ($kind2 -ne "upgrade") { throw "InstallKind='$kind2' expected 'upgrade' after second install" }
+$tokenAfter = $null
+if (Test-Path $userRemote) { $tokenAfter = Assert-HubRemoteJson $userRemote "user-after-upgrade" }
+elseif (Test-Path $machineRemote) { $tokenAfter = Assert-HubRemoteJson $machineRemote "machine-after-upgrade" }
+else { throw "hub_remote.json missing after upgrade" }
+if ($tokenAfter -ne $tokenBeforeUpgrade) {
+    throw "hub_remote token changed on upgrade (before=$tokenBeforeUpgrade after=$tokenAfter)"
+}
+Write-Host "Upgrade InstallKind=$kind2 token unchanged"
 
 Write-Host "=== Seed user markers ==="
 $appData = Join-Path $env:APPDATA "blazium"
@@ -107,6 +148,8 @@ if ((";" + $pathAfter.ToUpperInvariant() + ";") -like ("*;" + $CustomDir.ToUpper
     throw "PATH still contains install root"
 }
 if (Test-Path $appData) { throw "APPDATA\blazium still exists" }
+$commonBlazium = Join-Path $env:PROGRAMDATA "blazium"
+if (Test-Path $commonBlazium) { throw "PROGRAMDATA\blazium still exists" }
 if (Test-Path $local) { throw "LOCALAPPDATA\Blazium still exists" }
 if (Test-Path $godot) { throw "Godot userdata still exists" }
 
