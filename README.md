@@ -21,6 +21,7 @@ Requires **[blazium-cli](https://github.com/blazium-games/blazium-cli)** for ins
 | `blazium://load?path=…` | Load project (profile) via CLI |
 | `blazium://project/<encoded-path>` | Shorthand open |
 | `blazium://install?version=…` | Install editor via CLI |
+| `blazium://register?path=…` | Register a local editor binary via CLI |
 
 Flow: OS protocol handler → Hub (single-instance) → `blazium-cli handle-uri` → running editor instance or new launch.
 
