@@ -1,6 +1,8 @@
 extends Node
 ## Runs blazium-cli with --json and parses stdout.
 
+const HubSanitize := preload("res://scripts/gdscript/hub_sanitize.gd")
+
 signal command_finished(ok: bool, data: Variant, error: String)
 
 var cli_path: String = ""
@@ -21,7 +23,11 @@ func is_busy() -> bool:
 
 
 func set_cli_path(path: String) -> void:
-	cli_path = path.strip_edges()
+	var p := path.strip_edges()
+	if not HubSanitize.is_safe_cli_path(p):
+		_last_error = "rejected unsafe CLI path"
+		return
+	cli_path = p
 
 
 func get_cli_path() -> String:
@@ -59,14 +65,16 @@ func list_cli_candidates() -> PackedStringArray:
 
 
 func resolve_cli() -> String:
-	if not cli_path.is_empty() and FileAccess.file_exists(cli_path):
+	if not cli_path.is_empty() and HubSanitize.is_safe_cli_path(cli_path) and FileAccess.file_exists(cli_path):
 		return cli_path
 	if HubSettings:
 		var p: String = HubSettings.get_cli_path()
-		if not p.is_empty() and FileAccess.file_exists(p):
+		if not p.is_empty() and HubSanitize.is_safe_cli_path(p) and FileAccess.file_exists(p):
 			cli_path = p
 			return p
 	for c in list_cli_candidates():
+		if not HubSanitize.is_safe_cli_path(c):
+			continue
 		if c == "blazium-cli" or c == "blazium-cli.exe":
 			cli_path = c
 			return c
@@ -124,6 +132,9 @@ func parse_json_output(text: String, code: int) -> Variant:
 	text = text.strip_edges()
 	if text.is_empty():
 		_last_error = "empty CLI output (exit %d)" % code
+		return null
+	if text.length() > HubSanitize.MAX_CLI_JSON_BYTES:
+		_last_error = "CLI output too large"
 		return null
 	var data: Variant = JSON.parse_string(text)
 	if data == null:

@@ -13,6 +13,16 @@ if command -v update-desktop-database >/dev/null 2>&1; then
   update-desktop-database -q /usr/share/applications || true
 fi
 if command -v xdg-mime >/dev/null 2>&1; then
-  xdg-mime default blazium-hub.desktop x-scheme-handler/blazium || true
+  # CLI owns blazium://; Hub desktop is for launching the GUI only.
+  xdg-mime default blazium-uri.desktop x-scheme-handler/blazium || true
+fi
+# Machine-wide Hub remote secret (idempotent; never rotates a valid token).
+# || true: headless ensure must not fail package configure.
+mkdir -p /etc/blazium
+if [ -x "$BLAZIUM_ROOT/bin/blazium-hub" ]; then
+  "$BLAZIUM_ROOT/bin/blazium-hub" --headless --ensure-hub-remote \
+    --hub-remote-path=/etc/blazium/hub_remote.json --quit || true
+elif [ -x "$BLAZIUM_ROOT/bin/blazium-cli" ]; then
+  "$BLAZIUM_ROOT/bin/blazium-cli" hub-remote ensure --path /etc/blazium/hub_remote.json || true
 fi
 exit 0

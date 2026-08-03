@@ -27,6 +27,18 @@ local CdnClient = {
 		return "/" .. tostring(channel) .. "/" .. tostring(version) .. "/editors.json"
 	end,
 
+	articles_rss_path = function(_self)
+		return "/articles/rss.xml"
+	end,
+
+	article_bbcode_path = function(_self, slug)
+		return "/articles/" .. tostring(slug) .. "/content.bbcode"
+	end,
+
+	article_meta_path = function(_self, slug)
+		return "/articles/" .. tostring(slug) .. "/meta.json"
+	end,
+
 	-- Network fetch lives in the GDScript autoload; Luau mirror exposes path helpers + CDN base.
 	cdn_base = function(_self)
 		return CDN_BASE

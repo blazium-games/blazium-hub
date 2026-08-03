@@ -2,18 +2,21 @@ extends Control
 
 @onready var nav_projects: Button = %NavProjects
 @onready var nav_editors: Button = %NavEditors
+@onready var nav_news: Button = %NavNews
 @onready var nav_settings: Button = %NavSettings
 @onready var pages: TabContainer = %Pages
 @onready var status_label: Label = %StatusLabel
 @onready var projects_view: Control = %ProjectsView
 @onready var editors_view: Control = %EditorsView
+@onready var news_view: Control = %NewsView
 @onready var settings_view: Control = %SettingsView
 
 
 func _ready() -> void:
-	nav_projects.pressed.connect(func(): pages.current_tab = 0)
-	nav_editors.pressed.connect(func(): pages.current_tab = 1)
-	nav_settings.pressed.connect(func(): pages.current_tab = 2)
+	nav_projects.pressed.connect(func(): _select_tab(0))
+	nav_editors.pressed.connect(func(): _select_tab(1))
+	nav_news.pressed.connect(func(): _select_tab(2))
+	nav_settings.pressed.connect(func(): _select_tab(3))
 	if HubState:
 		HubState.error_message.connect(_on_error)
 		HubState.refreshed.connect(_on_refreshed)
@@ -21,7 +24,18 @@ func _ready() -> void:
 		UriRouter.toast.connect(_on_error)
 	if HubUpdates:
 		HubUpdates.status_changed.connect(_on_error)
+	_select_tab(0)
 	call_deferred("_initial_refresh")
+
+
+func _select_tab(idx: int) -> void:
+	pages.current_tab = idx
+	nav_projects.set_pressed_no_signal(idx == 0)
+	nav_editors.set_pressed_no_signal(idx == 1)
+	nav_news.set_pressed_no_signal(idx == 2)
+	nav_settings.set_pressed_no_signal(idx == 3)
+	if idx == 2 and news_view and news_view.has_method("ensure_loaded"):
+		news_view.ensure_loaded()
 
 
 func _initial_refresh() -> void:

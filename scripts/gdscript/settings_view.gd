@@ -1,5 +1,7 @@
 extends VBoxContainer
 
+const HubSanitize := preload("res://scripts/gdscript/hub_sanitize.gd")
+
 @onready var cli_path_edit: LineEdit = %CliPathEdit
 @onready var browse_cli_btn: Button = %BrowseCliBtn
 @onready var install_path_edit: LineEdit = %InstallPathEdit
@@ -75,6 +77,9 @@ func _load_install_path() -> void:
 
 
 func _on_cli_selected(path: String) -> void:
+	if not HubSanitize.is_safe_cli_path(path):
+		status.text = "Rejected unsafe CLI path"
+		return
 	cli_path_edit.text = path
 	HubSettings.set_cli_path_value(path)
 	status.text = "CLI path saved"
@@ -83,6 +88,9 @@ func _on_cli_selected(path: String) -> void:
 
 
 func _on_cli_submitted(text: String) -> void:
+	if not HubSanitize.is_safe_cli_path(text):
+		status.text = "Rejected unsafe CLI path"
+		return
 	HubSettings.set_cli_path_value(text)
 	status.text = "CLI path saved"
 	if HubLog:

@@ -4,6 +4,7 @@ set -e
 rm -f /usr/bin/blazium-hub /usr/bin/blazium-cli /usr/bin/blazium
 rm -f /etc/profile.d/blazium.sh
 rm -rf /opt/blazium
+rm -rf /etc/blazium
 
 # Wipe data for the user who invoked package removal (when available).
 # Other users' homes are left for admin cleanup.

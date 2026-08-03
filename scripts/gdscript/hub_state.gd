@@ -11,13 +11,13 @@ var status_text: String = ""
 
 static func normalize_list_payload(data: Variant, primary_key: String) -> Array:
 	if typeof(data) == TYPE_DICTIONARY:
-		if data.has(primary_key):
-			return data[primary_key] as Array
-		if data.has("items"):
-			return data["items"] as Array
+		if data.has(primary_key) and typeof(data[primary_key]) == TYPE_ARRAY:
+			return data[primary_key]
+		if data.has("items") and typeof(data["items"]) == TYPE_ARRAY:
+			return data["items"]
 		return []
 	if typeof(data) == TYPE_ARRAY:
-		return data as Array
+		return data
 	return []
 
 

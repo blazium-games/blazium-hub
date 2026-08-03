@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/gdscript/main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/views/projects.tscn" id="2"]
 [ext_resource type="PackedScene" path="res://scenes/views/editors.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/views/settings.tscn" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/views/news.tscn" id="5"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -54,6 +55,12 @@ layout_mode = 2
 toggle_mode = true
 text = "Editors"
 
+[node name="NavNews" type="Button" parent="Root/TopBar"]
+unique_name_in_owner = true
+layout_mode = 2
+toggle_mode = true
+text = "News"
+
 [node name="NavSettings" type="Button" parent="Root/TopBar"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -83,6 +90,10 @@ unique_name_in_owner = true
 layout_mode = 2
 
 [node name="EditorsView" parent="Root/Margin/Pages" instance=ExtResource("3")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="NewsView" parent="Root/Margin/Pages" instance=ExtResource("5")]
 unique_name_in_owner = true
 layout_mode = 2
 

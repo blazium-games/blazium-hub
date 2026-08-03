@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Blazium URI Handler
+Comment=Handle blazium:// deep links via blazium-cli
+Exec=/usr/bin/blazium-cli handle-uri %u
+NoDisplay=true
+Terminal=false
+Categories=Development;
+MimeType=x-scheme-handler/blazium;
+StartupNotify=false

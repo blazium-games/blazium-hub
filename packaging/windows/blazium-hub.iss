@@ -2,6 +2,11 @@
 ; Install root: {app} (= machine BLAZIUM). Default {autopf}\Blazium; any path via /DIR=.
 ; Bundles Hub + blazium-cli + PATH shims (blazium.cmd → CLI).
 ;
+; Admin / machine-wide only (PrivilegesRequired=admin). Do not set
+; PrivilegesRequiredOverridesAllowed — /CURRENTUSER must not downgrade to a
+; per-user install. Program Files + HKLM BLAZIUM let Hub self-update by
+; re-running this elevated Setup (CloseApplications closes running Hub/CLI).
+;
 ; Build (CI):
 ;   iscc /DMyAppVersion=0.1.0 /DMyAppArchLabel=x86_64 /DMyAppSourceDir=... blazium-hub.iss
 ;   iscc /DMyAppVersion=0.1.0 /DMyAppArchLabel=x86_32 /DMyAppIs32=1 /DMyAppSourceDir=... blazium-hub.iss
@@ -54,6 +59,7 @@ SetupIconFile=blazium-hub.ico
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
+; Machine-wide install under {autopf}; required for HKLM env/protocol and Hub/CLI updates.
 PrivilegesRequired=admin
 UninstallDisplayIcon={app}\Hub\{#MyAppExeName}
 ChangesAssociations=yes
@@ -80,8 +86,13 @@ Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\Hub\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-; Interactive finish-page checkbox (skipped in silent mode).
+; Always ensure machine + original-user hub_remote.json (idempotent; never rotates a valid token).
+; postinstall is required for runasoriginaluser; both ensures run before optional /LAUNCH.
+Filename: "{app}\Hub\{#MyAppExeName}"; Parameters: "--headless --ensure-hub-remote --hub-remote-path=""{commonappdata}\blazium\hub_remote.json"" --quit"; StatusMsg: "Ensuring Hub remote secret (machine)..."; Flags: postinstall runhidden waituntilterminated
+Filename: "{app}\Hub\{#MyAppExeName}"; Parameters: "--headless --ensure-hub-remote --quit"; StatusMsg: "Ensuring Hub remote secret (user)..."; Flags: postinstall runasoriginaluser runhidden waituntilterminated
+; Interactive finish-page checkboxes (skipped in silent mode).
 Filename: "{app}\Hub\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+Filename: "{#MyAppURL}"; Description: "Visit Blazium.app"; Flags: postinstall shellexec skipifsilent unchecked
 ; Silent/CLI: launch Hub only when /LAUNCH is passed.
 Filename: "{app}\Hub\{#MyAppExeName}"; Flags: nowait postinstall skipifnotsilent; Check: ShouldLaunchAfterSilent
 
@@ -90,11 +101,28 @@ Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environmen
 Root: HKCR; Subkey: "blazium"; ValueType: string; ValueData: "URL:Blazium Protocol"; Flags: uninsdeletekey
 Root: HKCR; Subkey: "blazium"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
 Root: HKCR; Subkey: "blazium\DefaultIcon"; ValueType: string; ValueData: "{app}\Hub\{#MyAppExeName},0"
-Root: HKCR; Subkey: "blazium\shell\open\command"; ValueType: string; ValueData: """{app}\Hub\{#MyAppExeName}"" ""%1"""
+; OS deep links go to blazium-cli; CLI launches/talks to Hub or editors over remote_control.
+Root: HKCR; Subkey: "blazium\shell\open\command"; ValueType: string; ValueData: """{app}\blazium-cli.exe"" handle-uri ""%1"""
+; Install kind metadata (written from [Code] as well for PreviousVersion).
+Root: HKLM; Subkey: "SOFTWARE\Blazium\Hub"; ValueType: string; ValueName: "InstallVersion"; ValueData: "{#MyAppVersion}"; Flags: uninsdeletekey
 
 [Code]
 const
   EnvironmentKey = 'SYSTEM\CurrentControlSet\Control\Session Manager\Environment';
+  BlaziumHubRegKey = 'SOFTWARE\Blazium\Hub';
+
+var
+  GIsUpgrade: Boolean;
+  GPreviousVersion: string;
+
+function UninstallRegKey: string;
+begin
+#if MyAppIs32
+  Result := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{A7C3E9B1-4D2F-4E8A-9C11-BLAZIUMHUB0032}_is1';
+#else
+  Result := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{A7C3E9B1-4D2F-4E8A-9C11-BLAZIUMHUB0001}_is1';
+#endif
+end;
 
 function CmdLineParamExists(const Param: string): Boolean;
 var
@@ -112,6 +140,40 @@ end;
 function ShouldLaunchAfterSilent: Boolean;
 begin
   Result := CmdLineParamExists('/LAUNCH');
+end;
+
+function IsUpgradeInstall: Boolean;
+begin
+  Result := RegKeyExists(HKEY_LOCAL_MACHINE, UninstallRegKey) or
+            FileExists(ExpandConstant('{app}\Hub\{#MyAppExeName}'));
+end;
+
+function InitializeSetup: Boolean;
+begin
+  GIsUpgrade := IsUpgradeInstall;
+  GPreviousVersion := '';
+  if GIsUpgrade then
+    RegQueryStringValue(HKEY_LOCAL_MACHINE, UninstallRegKey, 'DisplayVersion', GPreviousVersion);
+  if GIsUpgrade then
+    Log('InstallKind=upgrade PreviousVersion=' + GPreviousVersion)
+  else
+    Log('InstallKind=fresh');
+  Result := True;
+end;
+
+function UpdateReadyMemo(const Space, NewLine, MemoUserInfoInfo, MemoDirInfo,
+  MemoTypeInfo, MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: string): string;
+var
+  Kind: string;
+begin
+  if GIsUpgrade then
+    Kind := 'Updating Blazium Hub...'
+  else
+    Kind := 'Installing Blazium Hub...';
+  Result := Kind + NewLine + NewLine +
+            MemoDirInfo + NewLine + NewLine +
+            MemoGroupInfo + NewLine + NewLine +
+            MemoTasksInfo;
 end;
 
 function NeedsAddPath(Param: string): boolean;
@@ -159,10 +221,28 @@ begin
   RegWriteExpandStringValue(HKEY_LOCAL_MACHINE, EnvironmentKey, 'Path', Paths);
 end;
 
+procedure WriteInstallKindRegistry;
+var
+  Kind: string;
+begin
+  if GIsUpgrade then
+    Kind := 'upgrade'
+  else
+    Kind := 'fresh';
+  RegWriteStringValue(HKEY_LOCAL_MACHINE, BlaziumHubRegKey, 'InstallKind', Kind);
+  RegWriteStringValue(HKEY_LOCAL_MACHINE, BlaziumHubRegKey, 'InstallVersion', '{#MyAppVersion}');
+  if GIsUpgrade and (GPreviousVersion <> '') then
+    RegWriteStringValue(HKEY_LOCAL_MACHINE, BlaziumHubRegKey, 'PreviousVersion', GPreviousVersion);
+  Log('Wrote HKLM\' + BlaziumHubRegKey + ' InstallKind=' + Kind);
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
+  begin
     EnvAddPath(ExpandConstant('{app}'));
+    WriteInstallKindRegistry;
+  end;
 end;
 
 procedure WipeDir(const Dir: string);
@@ -175,7 +255,7 @@ end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
-  UserAppData, LocalAppData: string;
+  UserAppData, LocalAppData, CommonAppData: string;
 begin
   if CurUninstallStep = usUninstall then
   begin
@@ -184,7 +264,9 @@ begin
 
     UserAppData := ExpandConstant('{userappdata}');
     LocalAppData := ExpandConstant('{localappdata}');
+    CommonAppData := ExpandConstant('{commonappdata}');
     WipeDir(UserAppData + '\blazium');
+    WipeDir(CommonAppData + '\blazium');
     WipeDir(LocalAppData + '\Blazium');
     WipeDir(UserAppData + '\Godot\app_userdata\Blazium Hub');
   end;
