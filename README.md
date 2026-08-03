@@ -43,8 +43,8 @@ CLI↔Hub auth uses port `39218` and a shared token file.
 
 **Installers always ensure the machine file** (idempotent; never rotates a valid token):
 
-- Windows Inno: elevated Hub `--headless --ensure-hub-remote --hub-remote-path="{commonappdata}\blazium\hub_remote.json" --quit`, then the same without path override as `runasoriginaluser` (user AppData).
-- Linux postinst: Hub ensure to `/etc/blazium/hub_remote.json` (falls back to `blazium-cli hub-remote ensure --path …`).
+- Windows Inno (`[Code]` post-install, exit codes ignored): prefers bundled `blazium-cli hub-remote ensure` (machine `--path` under `{commonappdata}`, user via `ExecAsOriginalUser`), then falls back to Hub `--headless --ensure-hub-remote`.
+- Linux postinst: Hub ensure to `/etc/blazium/hub_remote.json` (falls back to `blazium-cli hub-remote ensure --path …`); failures do not fail package configure.
 
 Headless ensure: `BlaziumHub --headless --ensure-hub-remote [--hub-remote-path=<abs>] --quit`.
 

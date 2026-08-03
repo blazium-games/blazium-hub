@@ -22,12 +22,22 @@ function Get-MachinePath() {
     return [string](Get-MachineEnv "Path")
 }
 
+$SetupLog = Join-Path $env:RUNNER_TEMP "hub-setup-install.log"
+if (-not $env:RUNNER_TEMP) { $SetupLog = Join-Path ([System.IO.Path]::GetTempPath()) "hub-setup-install.log" }
+
 Write-Host "=== Silent install to $CustomDir ==="
 $p = Start-Process -FilePath $SetupPath -ArgumentList @(
     "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-",
-    "/DIR=$CustomDir"
+    "/DIR=$CustomDir",
+    "/LOG=$SetupLog"
 ) -Wait -PassThru
-if ($p.ExitCode -ne 0) { throw "Installer exit $($p.ExitCode)" }
+if ($p.ExitCode -ne 0) {
+    if (Test-Path $SetupLog) {
+        Write-Host "=== Installer log ($SetupLog) ==="
+        Get-Content -Path $SetupLog -ErrorAction SilentlyContinue | Select-Object -Last 80 | ForEach-Object { Write-Host $_ }
+    }
+    throw "Installer exit $($p.ExitCode)"
+}
 
 Write-Host "=== Assert custom-dir layout ==="
 $hub = Join-Path $CustomDir "Hub\BlaziumHub.exe"
@@ -94,12 +104,22 @@ Write-Host "InstallKind=$kind machine=$([bool]$machineTok) user=$([bool]$userTok
 
 $tokenBeforeUpgrade = if ($userTok) { $userTok } else { $machineTok }
 
+$UpgradeLog = Join-Path $env:RUNNER_TEMP "hub-setup-upgrade.log"
+if (-not $env:RUNNER_TEMP) { $UpgradeLog = Join-Path ([System.IO.Path]::GetTempPath()) "hub-setup-upgrade.log" }
+
 Write-Host "=== Silent reinstall (upgrade) ==="
 $p2 = Start-Process -FilePath $SetupPath -ArgumentList @(
     "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-",
-    "/DIR=$CustomDir"
+    "/DIR=$CustomDir",
+    "/LOG=$UpgradeLog"
 ) -Wait -PassThru
-if ($p2.ExitCode -ne 0) { throw "Upgrade installer exit $($p2.ExitCode)" }
+if ($p2.ExitCode -ne 0) {
+    if (Test-Path $UpgradeLog) {
+        Write-Host "=== Upgrade installer log ($UpgradeLog) ==="
+        Get-Content -Path $UpgradeLog -ErrorAction SilentlyContinue | Select-Object -Last 80 | ForEach-Object { Write-Host $_ }
+    }
+    throw "Upgrade installer exit $($p2.ExitCode)"
+}
 $kind2 = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Blazium\Hub" -ErrorAction SilentlyContinue).InstallKind
 if ($kind2 -ne "upgrade") { throw "InstallKind='$kind2' expected 'upgrade' after second install" }
 $tokenAfter = $null

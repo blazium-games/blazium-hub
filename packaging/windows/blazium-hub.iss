@@ -86,10 +86,7 @@ Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\Hub\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
-; Always ensure machine + original-user hub_remote.json (idempotent; never rotates a valid token).
-; postinstall is required for runasoriginaluser; both ensures run before optional /LAUNCH.
-Filename: "{app}\Hub\{#MyAppExeName}"; Parameters: "--headless --ensure-hub-remote --hub-remote-path=""{commonappdata}\blazium\hub_remote.json"" --quit"; StatusMsg: "Ensuring Hub remote secret (machine)..."; Flags: postinstall runhidden waituntilterminated
-Filename: "{app}\Hub\{#MyAppExeName}"; Parameters: "--headless --ensure-hub-remote --quit"; StatusMsg: "Ensuring Hub remote secret (user)..."; Flags: postinstall runasoriginaluser runhidden waituntilterminated
+; hub_remote.json ensure runs from [Code] CurStepChanged (ignores exit codes; mirrors Linux postinst || true).
 ; Interactive finish-page checkboxes (skipped in silent mode).
 Filename: "{app}\Hub\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 Filename: "{#MyAppURL}"; Description: "Visit Blazium.app"; Flags: postinstall shellexec skipifsilent unchecked
@@ -236,12 +233,61 @@ begin
   Log('Wrote HKLM\' + BlaziumHubRegKey + ' InstallKind=' + Kind);
 end;
 
+{ Prefer bundled blazium-cli hub-remote ensure; fall back to Hub --ensure-hub-remote.
+  Never abort setup on non-zero exit (same as Linux postinst || true). }
+procedure EnsureHubRemoteSecrets;
+var
+  ResultCode: Integer;
+  CliPath, HubPath, MachinePath: string;
+  MachineOk, UserOk: Boolean;
+begin
+  CliPath := ExpandConstant('{app}\blazium-cli.exe');
+  HubPath := ExpandConstant('{app}\Hub\{#MyAppExeName}');
+  MachinePath := ExpandConstant('{commonappdata}\blazium\hub_remote.json');
+  MachineOk := False;
+  UserOk := False;
+
+  if FileExists(CliPath) then
+  begin
+    Log('Ensuring machine hub_remote via blazium-cli...');
+    if Exec(CliPath, 'hub-remote ensure --path "' + MachinePath + '"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+      MachineOk := (ResultCode = 0)
+    else
+      ResultCode := -1;
+    Log('CLI machine hub-remote ensure exit=' + IntToStr(ResultCode));
+
+    Log('Ensuring user hub_remote via blazium-cli (original user)...');
+    if ExecAsOriginalUser(CliPath, 'hub-remote ensure', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+      UserOk := (ResultCode = 0)
+    else
+      ResultCode := -1;
+    Log('CLI user hub-remote ensure exit=' + IntToStr(ResultCode));
+  end;
+
+  if FileExists(HubPath) then
+  begin
+    if not MachineOk then
+    begin
+      Log('Fallback: Hub headless machine ensure...');
+      Exec(HubPath, '--headless --ensure-hub-remote --hub-remote-path="' + MachinePath + '" --quit', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+      Log('Hub machine ensure exit=' + IntToStr(ResultCode));
+    end;
+    if not UserOk then
+    begin
+      Log('Fallback: Hub headless user ensure (original user)...');
+      ExecAsOriginalUser(HubPath, '--headless --ensure-hub-remote --quit', '', SW_HIDE, ewWaitUntilTerminated, ResultCode);
+      Log('Hub user ensure exit=' + IntToStr(ResultCode));
+    end;
+  end;
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
   begin
     EnvAddPath(ExpandConstant('{app}'));
     WriteInstallKindRegistry;
+    EnsureHubRemoteSecrets;
   end;
 end;
 

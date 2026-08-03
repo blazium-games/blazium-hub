@@ -22,12 +22,13 @@ permissions:
 env:
   # Oldest still-supported GitHub-hosted images (not *-latest).
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  HUB_AUTOWORK: "1"
 
 jobs:
   autowork:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
+    env:
+      HUB_AUTOWORK: "1"
     steps:
       - uses: actions/checkout@v4
 
