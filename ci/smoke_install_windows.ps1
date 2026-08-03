@@ -88,6 +88,18 @@ function Assert-HubRemoteJson([string]$Path, [string]$Label) {
     return $tok
 }
 
+# 32-bit Inno on 64-bit Windows writes HKLM\SOFTWARE under WOW6432Node.
+function Get-HubInstallKind() {
+    foreach ($p in @(
+        "HKLM:\SOFTWARE\Blazium\Hub",
+        "HKLM:\SOFTWARE\WOW6432Node\Blazium\Hub"
+    )) {
+        $v = [string](Get-ItemProperty -Path $p -ErrorAction SilentlyContinue).InstallKind
+        if ($v) { return $v }
+    }
+    return ""
+}
+
 Write-Host "=== Assert hub_remote.json (machine and/or user) ==="
 $machineRemote = Join-Path $env:PROGRAMDATA "blazium\hub_remote.json"
 $userRemote = Join-Path $env:APPDATA "blazium\hub_remote.json"
@@ -98,7 +110,7 @@ if (Test-Path $userRemote) { $userTok = Assert-HubRemoteJson $userRemote "user" 
 if (-not $machineTok -and -not $userTok) {
     throw "neither machine nor user hub_remote.json exists after install"
 }
-$kind = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Blazium\Hub" -ErrorAction SilentlyContinue).InstallKind
+$kind = Get-HubInstallKind
 if ($kind -ne "fresh") { throw "InstallKind='$kind' expected 'fresh' after first install" }
 Write-Host "InstallKind=$kind machine=$([bool]$machineTok) user=$([bool]$userTok)"
 
@@ -120,7 +132,7 @@ if ($p2.ExitCode -ne 0) {
     }
     throw "Upgrade installer exit $($p2.ExitCode)"
 }
-$kind2 = (Get-ItemProperty -Path "HKLM:\SOFTWARE\Blazium\Hub" -ErrorAction SilentlyContinue).InstallKind
+$kind2 = Get-HubInstallKind
 if ($kind2 -ne "upgrade") { throw "InstallKind='$kind2' expected 'upgrade' after second install" }
 $tokenAfter = $null
 if (Test-Path $userRemote) { $tokenAfter = Assert-HubRemoteJson $userRemote "user-after-upgrade" }
