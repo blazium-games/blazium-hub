@@ -141,8 +141,8 @@ end;
 
 function IsUpgradeInstall: Boolean;
 begin
-  Result := RegKeyExists(HKEY_LOCAL_MACHINE, UninstallRegKey) or
-            FileExists(ExpandConstant('{app}\Hub\{#MyAppExeName}'));
+  // Do not ExpandConstant('{app}') here — {app} is not initialized during InitializeSetup.
+  Result := RegKeyExists(HKEY_LOCAL_MACHINE, UninstallRegKey);
 end;
 
 function InitializeSetup: Boolean;
@@ -242,7 +242,7 @@ var
   MachineOk, UserOk: Boolean;
 begin
   CliPath := ExpandConstant('{app}\blazium-cli.exe');
-  HubPath := ExpandConstant('{app}\Hub\{#MyAppExeName}');
+  HubPath := ExpandConstant('{app}\Hub\') + '{#MyAppExeName}';
   MachinePath := ExpandConstant('{commonappdata}\blazium\hub_remote.json');
   MachineOk := False;
   UserOk := False;
