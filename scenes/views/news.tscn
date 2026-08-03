@@ -1,0 +1,71 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/gdscript/news_view.gd" id="1"]
+
+[node name="NewsView" type="VBoxContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Header" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 22
+text = "News"
+
+[node name="BackNewsBtn" type="Button" parent="Header"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+text = "Back"
+
+[node name="RefreshNewsBtn" type="Button" parent="Header"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Refresh"
+
+[node name="NewsListPanel" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="NewsList" type="ItemList" parent="NewsListPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+allow_reselect = true
+auto_height = false
+
+[node name="NewsDetailPanel" type="VBoxContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="ArticleTitle" type="Label" parent="NewsDetailPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+autowrap_mode = 3
+text = ""
+
+[node name="ArticleBody" type="RichTextLabel" parent="NewsDetailPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+fit_content = false
+scroll_active = true
+selection_enabled = true
+text = ""
+
+[node name="NewsStatus" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 2
+text = ""
