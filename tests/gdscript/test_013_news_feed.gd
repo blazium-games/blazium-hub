@@ -91,3 +91,26 @@ func test_013_parse_live_shaped_rss() -> void:
 	assert_eq(str(items[1].get("slug", "")), "release-0-6-725")
 	assert_true(str(items[0].get("cover", "")).ends_with("/steam-module/assets/cover.jpg"))
 	assert_eq(CdnClient.article_bbcode_path(str(items[0].get("slug", ""))), "/articles/steam-module/content.bbcode")
+
+
+func test_013_hosts_from_meta_and_bbcode() -> void:
+	var meta := {
+		"slug": "steam-module",
+		"hosts": [
+			{"name": "IndieDB", "url": "https://www.indiedb.com/engines/blazium-engine/news/steam-module"},
+			{"name": "itch.io", "url": "https://blaziumengine.itch.io"},
+			{"name": "Dup", "url": "https://www.indiedb.com/engines/blazium-engine/news/steam-module"},
+			{"name": "Bad", "url": "/relative"},
+			{"name": "", "url": "https://example.com"},
+		],
+	}
+	var hosts := NewsFeed.hosts_from_meta(meta)
+	assert_eq(hosts.size(), 2)
+	assert_eq(str(hosts[0].get("name", "")), "IndieDB")
+	assert_eq(str(hosts[1].get("name", "")), "itch.io")
+	var bb := NewsFeed.format_hosts_bbcode(hosts)
+	assert_true(bb.begins_with("Hosted on: "), bb)
+	assert_true(bb.contains("[url=https://www.indiedb.com/engines/blazium-engine/news/steam-module]IndieDB[/url]"), bb)
+	assert_true(bb.contains("[url=https://blaziumengine.itch.io]itch.io[/url]"), bb)
+	assert_eq(NewsFeed.format_hosts_bbcode([]), "")
+	assert_eq(NewsFeed.hosts_from_meta(null).size(), 0)

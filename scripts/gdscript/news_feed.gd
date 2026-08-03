@@ -129,3 +129,46 @@ static func sanitize_bbcode(bbcode: String) -> String:
 	# Same bug could split snake_case identifiers inside previously unprotected spans.
 	out = out.replace("app[i]id", "app_id")
 	return out
+
+
+static func hosts_from_meta(meta: Variant) -> Array:
+	## Extract [{name,url}, ...] from CDN meta.json payload.
+	var out: Array = []
+	if typeof(meta) != TYPE_DICTIONARY:
+		return out
+	var raw: Variant = meta.get("hosts", [])
+	if typeof(raw) != TYPE_ARRAY:
+		return out
+	var seen: Dictionary = {}
+	for entry in raw:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var name := str(entry.get("name", "")).strip_edges()
+		var url := str(entry.get("url", "")).strip_edges()
+		if name.is_empty() or url.is_empty():
+			continue
+		if not (url.begins_with("http://") or url.begins_with("https://")):
+			continue
+		var key := url.to_lower()
+		if seen.has(key):
+			continue
+		seen[key] = true
+		out.append({"name": name, "url": url})
+	return out
+
+
+static func format_hosts_bbcode(hosts: Array) -> String:
+	if hosts.is_empty():
+		return ""
+	var parts: PackedStringArray = PackedStringArray()
+	for entry in hosts:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var name := str(entry.get("name", "")).strip_edges()
+		var url := str(entry.get("url", "")).strip_edges()
+		if name.is_empty() or url.is_empty():
+			continue
+		parts.append("[url=%s]%s[/url]" % [url, name])
+	if parts.is_empty():
+		return ""
+	return "Hosted on: " + " · ".join(parts)

@@ -8,6 +8,7 @@ Requires **[blazium-cli](https://github.com/blazium-games/blazium-cli)** for ins
 
 - **Projects** — list / add / remove / open via `blazium-cli --json`
 - **Editors** — CDN catalogs (`release` / `nightly`) + CLI install/uninstall
+- **News** — Blazium articles from `cdn.blazium.app/articles/rss.xml`, readable in-app (BBCode body + external `hosts` links from each article’s `meta.json`)
 - **Settings** — CLI path, editor install path, close-to-tray (Windows), CLI upgrade check
 - **System tray** (Windows) — show, recent projects, quit
 - **URI scheme** `blazium://` — registered by Windows/Linux installers

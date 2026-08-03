@@ -8,6 +8,7 @@ const NewsFeed := preload("res://scripts/gdscript/news_feed.gd")
 @onready var detail_panel: Control = %NewsDetailPanel
 @onready var news_list: ItemList = %NewsList
 @onready var article_title: Label = %ArticleTitle
+@onready var article_hosts: RichTextLabel = %ArticleHosts
 @onready var article_body: RichTextLabel = %ArticleBody
 @onready var status: Label = %NewsStatus
 
@@ -26,6 +27,10 @@ func _ready() -> void:
 	article_body.fit_content = false
 	article_body.scroll_active = true
 	article_body.meta_clicked.connect(_on_meta_clicked)
+	article_hosts.bbcode_enabled = true
+	article_hosts.fit_content = true
+	article_hosts.scroll_active = false
+	article_hosts.meta_clicked.connect(_on_meta_clicked)
 	_show_list()
 
 
@@ -60,6 +65,7 @@ func _show_list() -> void:
 	detail_panel.visible = false
 	back_btn.visible = false
 	refresh_btn.visible = true
+	_set_hosts_bbcode("")
 
 
 func _show_detail() -> void:
@@ -67,6 +73,16 @@ func _show_detail() -> void:
 	detail_panel.visible = true
 	back_btn.visible = true
 	refresh_btn.visible = false
+
+
+func _set_hosts_bbcode(bbcode: String) -> void:
+	article_hosts.clear()
+	if bbcode.is_empty():
+		article_hosts.visible = false
+		article_hosts.text = ""
+		return
+	article_hosts.visible = true
+	article_hosts.append_text(bbcode)
 
 
 func _on_refresh() -> void:
@@ -149,6 +165,12 @@ func _open_article(item: Dictionary) -> void:
 		return
 
 	_set_status("Loading %s…" % slug)
+	var meta_text := await CdnClient.fetch_text(CdnClient.article_meta_path(slug), true)
+	var hosts_bb := ""
+	if not meta_text.is_empty():
+		var meta: Variant = JSON.parse_string(meta_text)
+		hosts_bb = NewsFeed.format_hosts_bbcode(NewsFeed.hosts_from_meta(meta))
+
 	var bbcode := await CdnClient.fetch_text(CdnClient.article_bbcode_path(slug), true)
 	if bbcode.is_empty():
 		_set_status(CdnClient.get_last_error() if not CdnClient.get_last_error().is_empty() else "Failed to load article")
@@ -157,6 +179,7 @@ func _open_article(item: Dictionary) -> void:
 	bbcode = NewsFeed.sanitize_bbcode(bbcode)
 	bbcode = await _localize_images(bbcode)
 	article_title.text = str(item.get("title", slug))
+	_set_hosts_bbcode(hosts_bb)
 	article_body.clear()
 	article_body.append_text(bbcode)
 	_show_detail()
