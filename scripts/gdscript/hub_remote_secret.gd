@@ -41,7 +41,6 @@ func _bootstrap() -> void:
 	_apply_project_settings()
 	if ensure_only:
 		# Installer / CI path: write secret and exit without keeping a GUI server.
-		OS.set_exit_code(0)
 		var tree := get_tree()
 		if tree:
 			tree.quit(0)
