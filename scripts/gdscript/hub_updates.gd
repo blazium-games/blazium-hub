@@ -1,6 +1,8 @@
 extends Node
 ## Launch/settings update prompts. Session dismissals clear on relaunch.
 
+const HubSanitize := preload("res://scripts/gdscript/hub_sanitize.gd")
+
 signal status_changed(message: String)
 
 const PRODUCT_ORDER := ["hub", "cli", "editor", "templates"]
@@ -183,6 +185,12 @@ func _on_accepted() -> void:
 			get_tree().quit()
 			return
 		"editor":
+			if not HubSanitize.is_valid_version(latest) or latest.strip_edges().is_empty():
+				_last_summary = "Rejected invalid editor version"
+				status_changed.emit(_last_summary)
+				_pending = {}
+				call_deferred("_show_next")
+				return
 			var r: Variant = await HubCli.install_async(latest)
 			ok = r != null
 			if not ok:
@@ -192,6 +200,12 @@ func _on_accepted() -> void:
 				if HubState and HubState.has_method("refresh_all"):
 					HubState.refresh_all()
 		"templates":
+			if not HubSanitize.is_valid_version(latest) or latest.strip_edges().is_empty():
+				_last_summary = "Rejected invalid templates version"
+				status_changed.emit(_last_summary)
+				_pending = {}
+				call_deferred("_show_next")
+				return
 			var r: Variant = await HubCli.templates_download_async(latest)
 			ok = r != null
 			if not ok:

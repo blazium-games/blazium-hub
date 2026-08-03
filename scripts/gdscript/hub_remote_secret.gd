@@ -1,6 +1,8 @@
 extends Node
 ## Loads or creates hub_remote.json and starts authenticated remote_control for CLI IPC.
 
+const HubSanitize := preload("res://scripts/gdscript/hub_sanitize.gd")
+
 const DEFAULT_HOST := "127.0.0.1"
 const DEFAULT_PORT := 39218
 
@@ -139,12 +141,9 @@ func _apply_dict(d: Dictionary) -> void:
 	if d.is_empty():
 		return
 	token = str(d.get("token", "")).strip_edges()
-	host = str(d.get("host", DEFAULT_HOST)).strip_edges()
-	if host.is_empty():
-		host = DEFAULT_HOST
-	port = int(d.get("port", DEFAULT_PORT))
-	if port <= 0:
-		port = DEFAULT_PORT
+	# Never bind remote_control off loopback, even if the file is poisoned.
+	host = HubSanitize.sanitize_bind_host(str(d.get("host", DEFAULT_HOST)))
+	port = HubSanitize.sanitize_bind_port(int(d.get("port", DEFAULT_PORT)), DEFAULT_PORT)
 
 
 func _write_secret_file() -> void:

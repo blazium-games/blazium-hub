@@ -1,5 +1,7 @@
 extends VBoxContainer
 
+const HubSanitize := preload("res://scripts/gdscript/hub_sanitize.gd")
+
 @onready var channel_option: OptionButton = %ChannelOption
 @onready var installed_list: ItemList = %InstalledList
 @onready var available_list: ItemList = %AvailableList
@@ -133,6 +135,9 @@ func _on_install() -> void:
 	if not sels.is_empty():
 		version = available_list.get_item_text(sels[0])
 	var channel := _selected_channel()
+	if not HubSanitize.is_valid_channel(channel) or not HubSanitize.is_valid_version(version):
+		_set_status("Rejected invalid channel or version")
+		return
 	_set_status("Installing %s (%s) via blazium-cli…" % [
 		version if not version.is_empty() else "default",
 		channel,
@@ -165,6 +170,12 @@ func _on_uninstall() -> void:
 		channel = str(meta.get("channel", "")).strip_edges()
 	else:
 		version = str(meta)
+	if not HubSanitize.is_valid_version(version):
+		_set_status("Rejected invalid version")
+		return
+	if not channel.is_empty() and not HubSanitize.is_valid_channel(channel):
+		_set_status("Rejected invalid channel")
+		return
 	_set_status("Uninstalling %s%s…" % [
 		version,
 		(" [%s]" % channel) if not channel.is_empty() else "",

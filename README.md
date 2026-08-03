@@ -13,6 +13,15 @@ Requires **[blazium-cli](https://github.com/blazium-games/blazium-cli)** for ins
 - **System tray** (Windows) — show, recent projects, quit
 - **URI scheme** `blazium://` — registered by Windows/Linux installers
 
+## Input hardening
+
+Untrusted ingress (CDN, News BBCode/`hosts`, SingleInstance IPC, `hub_remote.json`, CLI JSON, URIs, settings paths) goes through [`scripts/gdscript/hub_sanitize.gd`](scripts/gdscript/hub_sanitize.gd):
+
+- **CDN fetches** — `https://cdn.blazium.app` only, with response size caps
+- **External opens** — `https` only (no `javascript:` / credentials); BBCode tags allowlisted before display
+- **remote_control** — bind host forced to loopback even if config is poisoned
+- **SingleInstance / URIs** — only `SHOW` or `blazium:` messages; non-scheme URIs rejected
+
 ## URI scheme
 
 | URI | Action |

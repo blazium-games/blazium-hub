@@ -1,6 +1,7 @@
 extends VBoxContainer
 
 const NewsFeed := preload("res://scripts/gdscript/news_feed.gd")
+const HubSanitize := preload("res://scripts/gdscript/hub_sanitize.gd")
 
 @onready var refresh_btn: Button = %RefreshNewsBtn
 @onready var back_btn: Button = %BackNewsBtn
@@ -49,8 +50,8 @@ func _notification(what: int) -> void:
 
 
 func _on_meta_clicked(meta: Variant) -> void:
-	var url := str(meta)
-	if url.begins_with("http://") or url.begins_with("https://"):
+	var url := str(meta).strip_edges()
+	if HubSanitize.is_safe_external_url(url) or HubSanitize.is_allowed_cdn_url(url):
 		OS.shell_open(url)
 
 
@@ -160,25 +161,30 @@ func _open_article(item: Dictionary) -> void:
 	var slug := str(item.get("slug", ""))
 	if slug.is_empty():
 		slug = NewsFeed.slug_from_link(str(item.get("link", "")))
-	if slug.is_empty():
-		_set_status("Article has no slug")
+	if not HubSanitize.is_valid_slug(slug):
+		_set_status("Article has no valid slug")
 		return
 
 	_set_status("Loading %s…" % slug)
-	var meta_text := await CdnClient.fetch_text(CdnClient.article_meta_path(slug), true)
+	var meta_path := CdnClient.article_meta_path(slug)
+	var bbcode_path := CdnClient.article_bbcode_path(slug)
+	if meta_path.is_empty() or bbcode_path.is_empty():
+		_set_status("Article path rejected")
+		return
+	var meta_text := await CdnClient.fetch_text(meta_path, true)
 	var hosts_bb := ""
 	if not meta_text.is_empty():
 		var meta: Variant = JSON.parse_string(meta_text)
 		hosts_bb = NewsFeed.format_hosts_bbcode(NewsFeed.hosts_from_meta(meta))
 
-	var bbcode := await CdnClient.fetch_text(CdnClient.article_bbcode_path(slug), true)
+	var bbcode := await CdnClient.fetch_text(bbcode_path, true)
 	if bbcode.is_empty():
 		_set_status(CdnClient.get_last_error() if not CdnClient.get_last_error().is_empty() else "Failed to load article")
 		return
 
 	bbcode = NewsFeed.sanitize_bbcode(bbcode)
 	bbcode = await _localize_images(bbcode)
-	article_title.text = str(item.get("title", slug))
+	article_title.text = HubSanitize.clamp_text(str(item.get("title", slug)), HubSanitize.MAX_TITLE_LEN)
 	_set_hosts_bbcode(hosts_bb)
 	article_body.clear()
 	article_body.append_text(bbcode)
@@ -187,7 +193,7 @@ func _open_article(item: Dictionary) -> void:
 
 
 func _localize_images(bbcode: String) -> String:
-	## Download remote [img] URLs into local files RichTextLabel can display.
+	## Download CDN [img] URLs into local files RichTextLabel can display.
 	var out := bbcode
 	var re := RegEx.new()
 	if re.compile("\\[img\\](https?://[^\\[]+)\\[/img\\]") != OK:
@@ -195,16 +201,24 @@ func _localize_images(bbcode: String) -> String:
 	var matches := re.search_all(bbcode)
 	var cache_dir := "user://news_img_cache"
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(cache_dir))
+	var fetched := 0
 	for m in matches:
-		var url := m.get_string(1)
+		if fetched >= HubSanitize.MAX_IMAGES_PER_ARTICLE:
+			break
+		var url := m.get_string(1).strip_edges()
+		if not HubSanitize.is_allowed_cdn_url(url):
+			continue
 		var local_path := await _cache_image(url, cache_dir)
 		if local_path.is_empty():
 			continue
 		out = out.replace("[img]%s[/img]" % url, "[img]%s[/img]" % local_path)
+		fetched += 1
 	return out
 
 
 func _cache_image(url: String, cache_dir: String) -> String:
+	if not HubSanitize.is_allowed_cdn_url(url):
+		return ""
 	var hash_name := url.md5_text()
 	var ext := ".img"
 	var q := url.find("?")
@@ -223,5 +237,4 @@ func _cache_image(url: String, cache_dir: String) -> String:
 		if f == null:
 			return ""
 		f.store_buffer(bytes)
-	# Absolute forward-slash path is the most reliable for RichTextLabel [img].
 	return ProjectSettings.globalize_path(local).replace("\\", "/")

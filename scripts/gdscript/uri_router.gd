@@ -1,6 +1,8 @@
 extends Node
 ## Routes blazium:// URIs: hub show locally, everything else via blazium-cli handle-uri.
 
+const HubSanitize := preload("res://scripts/gdscript/hub_sanitize.gd")
+
 signal uri_handled(result: Dictionary)
 signal toast(message: String)
 
@@ -35,6 +37,10 @@ static func is_hub_show_uri(uri: String) -> bool:
 func handle_uri(uri: String) -> void:
 	uri = uri.strip_edges()
 	if uri.is_empty():
+		return
+	if not HubSanitize.is_blazium_uri(uri):
+		toast.emit("Rejected non-blazium URI")
+		uri_handled.emit({"ok": false, "uri": uri, "error": "invalid scheme"})
 		return
 	if is_hub_show_uri(uri):
 		uri_handled.emit({"ok": true, "action": "hub", "uri": uri})

@@ -2,6 +2,7 @@ extends RefCounted
 ## RSS 2.0 parser + local cache for Blazium Hub News.
 ## Use via: const NewsFeed = preload("res://scripts/gdscript/news_feed.gd")
 
+const HubSanitize := preload("res://scripts/gdscript/hub_sanitize.gd")
 
 const CACHE_PATH := "user://news-cache.json"
 
@@ -17,9 +18,30 @@ static func slug_from_link(link: String) -> String:
 		return ""
 	var rest := trimmed.substr(idx + marker.length())
 	var slash := rest.find("/")
+	var slug := ""
 	if slash <= 0:
-		return rest.trim_suffix(".xml").trim_suffix(".json")
-	return rest.substr(0, slash)
+		slug = rest.trim_suffix(".xml").trim_suffix(".json")
+	else:
+		slug = rest.substr(0, slash)
+	if not HubSanitize.is_valid_slug(slug):
+		return ""
+	return slug
+
+
+static func _finalize_item(cur: Dictionary) -> Dictionary:
+	var link := str(cur.get("link", ""))
+	var slug := slug_from_link(link)
+	if slug.is_empty():
+		return {}
+	cur["slug"] = slug
+	cur["title"] = HubSanitize.clamp_text(str(cur.get("title", "")).strip_edges(), HubSanitize.MAX_TITLE_LEN)
+	cur["description"] = HubSanitize.clamp_text(str(cur.get("description", "")).strip_edges(), HubSanitize.MAX_DESC_LEN)
+	if str(cur.get("title", "")).is_empty():
+		return {}
+	var cover := str(cur.get("cover", "")).strip_edges()
+	if not cover.is_empty() and not HubSanitize.is_allowed_cdn_url(cover):
+		cur["cover"] = ""
+	return cur
 
 
 static func parse_rss(xml_text: String) -> Array:
@@ -75,10 +97,9 @@ static func parse_rss(xml_text: String) -> Array:
 			XMLParser.NODE_ELEMENT_END:
 				var end_name := parser.get_node_name()
 				if end_name == "item":
-					var link := str(cur.get("link", ""))
-					cur["slug"] = slug_from_link(link)
-					if str(cur.get("title", "")).is_empty() == false and not cur["slug"].is_empty():
-						items.append(cur)
+					var item := _finalize_item(cur)
+					if not item.is_empty() and items.size() < HubSanitize.MAX_RSS_ITEMS:
+						items.append(item)
 					in_item = false
 					cur = {}
 				current_tag = ""
@@ -92,19 +113,56 @@ static func read_cache() -> Array:
 	if f == null:
 		return []
 	var raw := f.get_as_text()
+	if raw.length() > HubSanitize.MAX_CDN_TEXT_BYTES:
+		return []
 	var data: Variant = JSON.parse_string(raw)
 	if typeof(data) != TYPE_DICTIONARY:
 		return []
 	var items: Variant = data.get("items", [])
 	if typeof(items) != TYPE_ARRAY:
 		return []
-	return items
+	var out: Array = []
+	for entry in items:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var slug := str(entry.get("slug", ""))
+		if not HubSanitize.is_valid_slug(slug):
+			slug = slug_from_link(str(entry.get("link", "")))
+		if not HubSanitize.is_valid_slug(slug):
+			continue
+		var cleaned := {
+			"title": HubSanitize.clamp_text(str(entry.get("title", "")).strip_edges(), HubSanitize.MAX_TITLE_LEN),
+			"link": str(entry.get("link", "")).strip_edges(),
+			"description": HubSanitize.clamp_text(str(entry.get("description", "")).strip_edges(), HubSanitize.MAX_DESC_LEN),
+			"pubDate": str(entry.get("pubDate", "")).strip_edges(),
+			"guid": str(entry.get("guid", "")).strip_edges(),
+			"cover": "",
+			"slug": slug,
+		}
+		if cleaned["title"].is_empty():
+			continue
+		var cover := str(entry.get("cover", "")).strip_edges()
+		if HubSanitize.is_allowed_cdn_url(cover):
+			cleaned["cover"] = cover
+		out.append(cleaned)
+		if out.size() >= HubSanitize.MAX_RSS_ITEMS:
+			break
+	return out
 
 
 static func write_cache(items: Array) -> void:
+	var safe: Array = []
+	for entry in items:
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		if not HubSanitize.is_valid_slug(str(entry.get("slug", ""))):
+			continue
+		safe.append(entry)
+		if safe.size() >= HubSanitize.MAX_RSS_ITEMS:
+			break
 	var payload := {
 		"fetched_at": Time.get_unix_time_from_system(),
-		"items": items,
+		"items": safe,
 	}
 	var f := FileAccess.open(CACHE_PATH, FileAccess.WRITE)
 	if f == null:
@@ -116,19 +174,16 @@ static func format_pub_date(pub_date: String) -> String:
 	var s := pub_date.strip_edges()
 	if s.is_empty():
 		return ""
-	# RSS dates look like: Wed, 15 Jan 2025 12:00:00 GMT — show as-is trimmed
-	return s
+	return HubSanitize.clamp_text(s, 80)
 
 
 static func sanitize_bbcode(bbcode: String) -> String:
-	## Repair known CDN converter corruptions and normalize for RichTextLabel.
+	## Repair known CDN converter corruptions, then apply display allowlist.
 	var out := bbcode
-	# Older publishes mangled font_size via underscore-italic: font[i]size → font_size
 	out = out.replace("[font[i]size=", "[font_size=")
 	out = out.replace("[/font[/i]size]", "[/font_size]")
-	# Same bug could split snake_case identifiers inside previously unprotected spans.
 	out = out.replace("app[i]id", "app_id")
-	return out
+	return HubSanitize.sanitize_bbcode_for_display(out)
 
 
 static func hosts_from_meta(meta: Variant) -> Array:
@@ -143,11 +198,11 @@ static func hosts_from_meta(meta: Variant) -> Array:
 	for entry in raw:
 		if typeof(entry) != TYPE_DICTIONARY:
 			continue
-		var name := str(entry.get("name", "")).strip_edges()
+		var name := HubSanitize.escape_bbcode_text(str(entry.get("name", "")).strip_edges())
 		var url := str(entry.get("url", "")).strip_edges()
 		if name.is_empty() or url.is_empty():
 			continue
-		if not (url.begins_with("http://") or url.begins_with("https://")):
+		if not HubSanitize.is_safe_external_url(url):
 			continue
 		var key := url.to_lower()
 		if seen.has(key):
@@ -164,9 +219,9 @@ static func format_hosts_bbcode(hosts: Array) -> String:
 	for entry in hosts:
 		if typeof(entry) != TYPE_DICTIONARY:
 			continue
-		var name := str(entry.get("name", "")).strip_edges()
+		var name := HubSanitize.escape_bbcode_text(str(entry.get("name", "")).strip_edges())
 		var url := str(entry.get("url", "")).strip_edges()
-		if name.is_empty() or url.is_empty():
+		if name.is_empty() or not HubSanitize.is_safe_external_url(url):
 			continue
 		parts.append("[url=%s]%s[/url]" % [url, name])
 	if parts.is_empty():

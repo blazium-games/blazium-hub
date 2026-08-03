@@ -1,6 +1,8 @@
 extends Node
 ## Single-instance lock via localhost TCP. Second process forwards URI then exits.
 
+const HubSanitize := preload("res://scripts/gdscript/hub_sanitize.gd")
+
 const PORT := 39217
 const HOST := "127.0.0.1"
 
@@ -57,19 +59,27 @@ func _process(_delta: float) -> void:
 		var status := peer.get_status()
 		if status == StreamPeerTCP.STATUS_CONNECTED:
 			if peer.get_available_bytes() > 0:
-				var msg := peer.get_utf8_string(peer.get_available_bytes()).strip_edges()
-				if msg.begins_with("URI "):
-					var uri := msg.substr(4).strip_edges()
-					if UriRouter:
-						UriRouter.handle_uri(uri)
-						UriRouter.show_hub()
-				elif msg == "SHOW":
-					if UriRouter:
-						UriRouter.show_hub()
+				var avail := mini(peer.get_available_bytes(), HubSanitize.MAX_IPC_MSG_LEN + 1)
+				var msg := peer.get_utf8_string(avail).strip_edges()
+				_handle_peer_message(msg)
 			still.append(peer)
 		elif status == StreamPeerTCP.STATUS_CONNECTING:
 			still.append(peer)
 	_clients = still
+
+
+func _handle_peer_message(msg: String) -> void:
+	if not HubSanitize.is_allowed_single_instance_message(msg):
+		return
+	if msg == "SHOW":
+		if UriRouter:
+			UriRouter.show_hub()
+		return
+	if msg.begins_with("URI "):
+		var uri := msg.substr(4).strip_edges()
+		if UriRouter:
+			UriRouter.handle_uri(uri)
+			UriRouter.show_hub()
 
 
 func _forward_and_quit() -> void:
