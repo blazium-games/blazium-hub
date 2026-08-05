@@ -1,28 +1,40 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=15 format=3 uid="uid://cy2ibvtgps8sx"]
 
-[ext_resource type="Script" path="res://scripts/gdscript/main.gd" id="1"]
+[ext_resource type="Script" uid="uid://smaced30rdjb" path="res://scripts/gdscript/main.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/views/projects.tscn" id="2"]
+[ext_resource type="Texture2D" uid="uid://c0uup1xevqtvg" path="res://small_icon.svg" id="2_tbgi4"]
 [ext_resource type="PackedScene" path="res://scenes/views/editors.tscn" id="3"]
 [ext_resource type="PackedScene" path="res://scenes/views/settings.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://scenes/views/news.tscn" id="5"]
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_tbgi4"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_jyhfs"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_tbgi4"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_tefeu"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_o6xl0"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_tipki"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_85g3d"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_choun"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1")
-
-[node name="Bg" type="ColorRect" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-color = Color(0.12, 0.13, 0.15, 1)
 
 [node name="Root" type="VBoxContainer" parent="."]
 layout_mode = 1
@@ -33,43 +45,69 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 0
 
-[node name="TopBar" type="HBoxContainer" parent="Root"]
+[node name="PanelContainer" type="PanelContainer" parent="Root"]
 layout_mode = 2
-theme_override_constants/separation = 8
 
-[node name="Brand" type="Label" parent="Root/TopBar"]
+[node name="HBoxContainer" type="HBoxContainer" parent="Root/PanelContainer"]
+layout_mode = 2
+
+[node name="Control" type="Control" parent="Root/PanelContainer/HBoxContainer"]
+layout_mode = 2
+
+[node name="SmallIcon" type="TextureRect" parent="Root/PanelContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+texture = ExtResource("2_tbgi4")
+
+[node name="Brand2" type="Label" parent="Root/PanelContainer/HBoxContainer"]
+custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
 text = "  Blazium Hub  "
+vertical_alignment = 1
 
-[node name="NavProjects" type="Button" parent="Root/TopBar"]
+[node name="TopButtons" type="HBoxContainer" parent="Root/PanelContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 1
+
+[node name="NavProjects" type="Button" parent="Root/PanelContainer/TopButtons"]
 unique_name_in_owner = true
 layout_mode = 2
 toggle_mode = true
 button_pressed = true
+button_group = SubResource("ButtonGroup_tbgi4")
 text = "Projects"
+flat = true
 
-[node name="NavEditors" type="Button" parent="Root/TopBar"]
+[node name="NavEditors" type="Button" parent="Root/PanelContainer/TopButtons"]
 unique_name_in_owner = true
 layout_mode = 2
 toggle_mode = true
+button_group = SubResource("ButtonGroup_tbgi4")
 text = "Editors"
+flat = true
 
-[node name="NavNews" type="Button" parent="Root/TopBar"]
+[node name="NavNews" type="Button" parent="Root/PanelContainer/TopButtons"]
 unique_name_in_owner = true
 layout_mode = 2
 toggle_mode = true
+button_group = SubResource("ButtonGroup_tbgi4")
 text = "News"
+flat = true
 
-[node name="NavSettings" type="Button" parent="Root/TopBar"]
+[node name="NavSettings" type="Button" parent="Root/PanelContainer/TopButtons"]
 unique_name_in_owner = true
 layout_mode = 2
 toggle_mode = true
+button_group = SubResource("ButtonGroup_tbgi4")
 text = "Settings"
+flat = true
 
-[node name="Spacer" type="Control" parent="Root/TopBar"]
+[node name="TopBar" type="HBoxContainer" parent="Root"]
 layout_mode = 2
-size_flags_horizontal = 3
+theme_override_constants/separation = 8
 
 [node name="Margin" type="MarginContainer" parent="Root"]
 layout_mode = 2
@@ -83,23 +121,38 @@ theme_override_constants/margin_bottom = 8
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
+theme_override_styles/tab_focus = SubResource("StyleBoxEmpty_jyhfs")
+theme_override_styles/tab_disabled = SubResource("StyleBoxEmpty_tbgi4")
+theme_override_styles/tabbar_background = SubResource("StyleBoxEmpty_tefeu")
+theme_override_styles/panel = SubResource("StyleBoxEmpty_o6xl0")
+theme_override_styles/tab_selected = SubResource("StyleBoxEmpty_tipki")
+theme_override_styles/tab_hovered = SubResource("StyleBoxEmpty_85g3d")
+theme_override_styles/tab_unselected = SubResource("StyleBoxEmpty_choun")
+current_tab = 2
 tabs_visible = false
 
 [node name="ProjectsView" parent="Root/Margin/Pages" instance=ExtResource("2")]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
+metadata/_tab_index = 0
 
 [node name="EditorsView" parent="Root/Margin/Pages" instance=ExtResource("3")]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
+metadata/_tab_index = 1
 
 [node name="NewsView" parent="Root/Margin/Pages" instance=ExtResource("5")]
 unique_name_in_owner = true
 layout_mode = 2
+metadata/_tab_index = 2
 
 [node name="SettingsView" parent="Root/Margin/Pages" instance=ExtResource("4")]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
+metadata/_tab_index = 3
 
 [node name="StatusBar" type="PanelContainer" parent="Root"]
 layout_mode = 2
