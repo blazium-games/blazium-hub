@@ -22,12 +22,14 @@ text = "Projects"
 [node name="AddProjectButton" type="Button" parent="Header"]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_default_cursor_shape = 2
 theme_type_variation = &"FilledButton"
 text = "Add Project"
 
 [node name="ScanFolderButton" type="Button" parent="Header"]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_default_cursor_shape = 2
 theme_type_variation = &"FilledButton"
 text = "Scan Folder"
 

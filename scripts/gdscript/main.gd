@@ -10,13 +10,15 @@ extends Control
 @onready var editors_view: Control = %EditorsView
 @onready var news_view: Control = %NewsView
 @onready var settings_view: Control = %SettingsView
+@onready var discord_button: TextureButton = %DiscordButton
 
 
 func _ready() -> void:
-	nav_projects.pressed.connect(func(): _select_tab(0))
-	nav_editors.pressed.connect(func(): _select_tab(1))
-	nav_news.pressed.connect(func(): _select_tab(2))
-	nav_settings.pressed.connect(func(): _select_tab(3))
+	nav_projects.pressed.connect(_select_tab.bind(0))
+	nav_editors.pressed.connect(_select_tab.bind(1))
+	nav_news.pressed.connect(_select_tab.bind(2))
+	nav_settings.pressed.connect(_select_tab.bind(3))
+	discord_button.pressed.connect(OS.shell_open.bind("https://discord.gg/XHUTvnxhDR"))
 	if HubState:
 		HubState.error_message.connect(_on_error)
 		HubState.refreshed.connect(_on_refreshed)

@@ -49,6 +49,10 @@ func _gui_input(event: InputEvent) -> void:
 				if mouse_in:
 					open_news.emit(item)
 				press_attempt = false
+		return
+	if event.is_action_pressed("ui_accept"):
+		open_news.emit(item)
+		return
 
 
 func _draw() -> void:

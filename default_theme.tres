@@ -1,4 +1,4 @@
-[gd_resource type="Theme" load_steps=26 format=3 uid="uid://57b1m6dp53ek"]
+[gd_resource type="Theme" load_steps=27 format=3 uid="uid://57b1m6dp53ek"]
 
 [ext_resource type="FontFile" uid="uid://b612u8fpchism" path="res://assets/DMSans-ExtraBold.ttf" id="1_3taad"]
 [ext_resource type="Texture2D" uid="uid://dluwmjqylqpxu" path="res://assets/icons/close.svg" id="1_7j863"]
@@ -301,6 +301,18 @@ corner_radius_top_right = 10
 corner_radius_bottom_right = 10
 corner_radius_bottom_left = 10
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qverm"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
+bg_color = Color(0.164706, 0.0784314, 0.207843, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.266667, 0.164706, 0.411765, 1)
+
 [resource]
 default_font = ExtResource("2_3taad")
 AcceptDialog/constants/buttons_min_width = 128
@@ -353,6 +365,7 @@ LineEdit/styles/focus = SubResource("StyleBoxFlat_3taad")
 LineEdit/styles/normal = SubResource("StyleBoxFlat_7j863")
 LineEdit/styles/read_only = SubResource("StyleBoxFlat_50bnw")
 OptionButton/fonts/font = ExtResource("3_50bnw")
+PopupPanel/styles/panel = SubResource("StyleBoxFlat_qverm")
 ScrollContainer/constants/h_scroll_bar_separation = 8
 ScrollContainer/constants/v_scroll_bar_separation = 8
 SmallHeaderLabel/base_type = &"Label"

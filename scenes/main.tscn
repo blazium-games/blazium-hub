@@ -1,4 +1,4 @@
-[gd_scene load_steps=25 format=3 uid="uid://cy2ibvtgps8sx"]
+[gd_scene load_steps=26 format=3 uid="uid://cy2ibvtgps8sx"]
 
 [ext_resource type="Script" uid="uid://smaced30rdjb" path="res://scripts/gdscript/main.gd" id="1"]
 [ext_resource type="PackedScene" uid="uid://c5co428sgius1" path="res://scenes/views/projects.tscn" id="2"]
@@ -7,6 +7,7 @@
 [ext_resource type="FontFile" uid="uid://b612u8fpchism" path="res://assets/DMSans-ExtraBold.ttf" id="3_o6xl0"]
 [ext_resource type="PackedScene" uid="uid://biw56b4kc51k8" path="res://scenes/views/settings.tscn" id="4"]
 [ext_resource type="PackedScene" uid="uid://w0o3j34apve0" path="res://scenes/views/news.tscn" id="5"]
+[ext_resource type="Texture2D" uid="uid://bckonu3d7gp0" path="res://assets/icons/discord.svg" id="8_tipki"]
 
 [sub_resource type="Gradient" id="Gradient_tefeu"]
 colors = PackedColorArray(0.262745, 0.160784, 0.407843, 1, 0.172549, 0.0823529, 0.215686, 1)
@@ -69,14 +70,10 @@ corner_radius_bottom_left = 10
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tipki"]
 content_margin_left = 8.0
-content_margin_top = 8.0
+content_margin_top = 4.0
 content_margin_right = 8.0
-content_margin_bottom = 8.0
+content_margin_bottom = 4.0
 bg_color = Color(0.164706, 0.0784314, 0.207843, 1)
-corner_radius_top_left = 8
-corner_radius_top_right = 8
-corner_radius_bottom_right = 8
-corner_radius_bottom_left = 8
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -137,6 +134,7 @@ alignment = 1
 [node name="NavProjects" type="Button" parent="PanelContainer/Root/PanelContainer/TopButtons"]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_default_cursor_shape = 2
 theme_override_colors/font_hover_color = Color(0.752941, 0.482353, 0.878431, 1)
 theme_override_colors/font_focus_color = Color(0.752941, 0.482353, 0.878431, 1)
 theme_override_fonts/font = ExtResource("3_o6xl0")
@@ -151,6 +149,7 @@ flat = true
 [node name="NavEditors" type="Button" parent="PanelContainer/Root/PanelContainer/TopButtons"]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_default_cursor_shape = 2
 theme_override_colors/font_hover_color = Color(0.752941, 0.482353, 0.878431, 1)
 theme_override_colors/font_focus_color = Color(0.752941, 0.482353, 0.878431, 1)
 theme_override_fonts/font = ExtResource("3_o6xl0")
@@ -164,6 +163,7 @@ flat = true
 [node name="NavNews" type="Button" parent="PanelContainer/Root/PanelContainer/TopButtons"]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_default_cursor_shape = 2
 theme_override_colors/font_hover_color = Color(0.752941, 0.482353, 0.878431, 1)
 theme_override_colors/font_focus_color = Color(0.752941, 0.482353, 0.878431, 1)
 theme_override_fonts/font = ExtResource("3_o6xl0")
@@ -177,6 +177,7 @@ flat = true
 [node name="NavSettings" type="Button" parent="PanelContainer/Root/PanelContainer/TopButtons"]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_default_cursor_shape = 2
 theme_override_colors/font_hover_color = Color(0.752941, 0.482353, 0.878431, 1)
 theme_override_colors/font_focus_color = Color(0.752941, 0.482353, 0.878431, 1)
 theme_override_fonts/font = ExtResource("3_o6xl0")
@@ -240,7 +241,18 @@ metadata/_tab_index = 3
 layout_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_tipki")
 
-[node name="StatusLabel" type="Label" parent="PanelContainer/Root/StatusBar"]
+[node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer/Root/StatusBar"]
+layout_mode = 2
+
+[node name="StatusLabel" type="Label" parent="PanelContainer/Root/StatusBar/HBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 text = "Ready"
+
+[node name="DiscordButton" type="TextureButton" parent="PanelContainer/Root/StatusBar/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Join Discord Server"
+mouse_default_cursor_shape = 2
+texture_normal = ExtResource("8_tipki")

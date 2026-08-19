@@ -8,6 +8,8 @@ const HubSanitize := preload("res://scripts/gdscript/hub_sanitize.gd")
 @onready var refresh_btn: Button = %RefreshEditorsBtn
 @onready var install_btn: Button = %InstallBtn
 @onready var uninstall_btn: Button = %UninstallBtn
+@onready var copy_console_btn: Button = %CopyConsoleButton
+@onready var clear_console_btn: Button = %ClearConsoleButton
 @onready var status: Label = %EditorsStatus
 @onready var console: TextEdit = %EditorsConsole
 
@@ -23,6 +25,8 @@ func _ready() -> void:
 	refresh_btn.pressed.connect(_on_refresh)
 	install_btn.pressed.connect(_on_install)
 	uninstall_btn.pressed.connect(_on_uninstall)
+	copy_console_btn.pressed.connect(_on_copy_console)
+	clear_console_btn.pressed.connect(_on_clear_console)
 	channel_option.item_selected.connect(func(_i): _load_available())
 	if HubLog:
 		HubLog.log_changed.connect(_refresh_console)
@@ -53,7 +57,22 @@ func _refresh_console() -> void:
 		return
 	if HubLog:
 		console.text = HubLog.get_text()
-		console.scroll_vertical = console.get_line_count()
+		console.scroll_vertical = INF
+
+
+func _on_copy_console():
+	var text: String = console.text
+	if HubLog:
+		text = HubLog.get_text()
+	DisplayServer.clipboard_set(text)
+	status.text = "Logs copied to clipboard"
+
+
+func _on_clear_console():
+	if HubLog:
+		HubLog.clear()
+	status.text = "Logs cleared"
+	_refresh_console()
 
 
 func reload_installed() -> void:

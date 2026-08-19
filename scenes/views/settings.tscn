@@ -33,6 +33,7 @@ placeholder_text = "Auto-detect from PATH"
 [node name="BrowseCliBtn" type="Button" parent="CliRow"]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_default_cursor_shape = 2
 text = "Browse"
 
 [node name="InstallRow" type="HBoxContainer" parent="."]
@@ -51,18 +52,21 @@ size_flags_horizontal = 3
 [node name="SetInstallPathBtn" type="Button" parent="InstallRow"]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_default_cursor_shape = 2
 theme_type_variation = &"FilledButton"
 text = "Apply"
 
 [node name="CloseToTrayCheck" type="CheckBox" parent="."]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_default_cursor_shape = 2
 text = "Close window to system tray (Windows)"
 alignment = 1
 
 [node name="CheckUpgradeBtn" type="Button" parent="."]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_default_cursor_shape = 2
 theme_type_variation = &"FilledButton"
 text = "Check blazium-cli updates"
 
@@ -78,12 +82,14 @@ text = "  Logs  "
 [node name="CopyLogsBtn" type="Button" parent="LogsBtnRow"]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_default_cursor_shape = 2
 theme_type_variation = &"FilledButton"
 text = "Copy"
 
 [node name="ClearLogsBtn" type="Button" parent="LogsBtnRow"]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_default_cursor_shape = 2
 text = "Clear"
 
 [node name="LogsEdit" type="TextEdit" parent="."]
@@ -96,6 +102,8 @@ editable = false
 wrap_mode = 1
 
 [node name="UriHelp" type="Label" parent="."]
+visible = false
+custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
 text = "URI scheme: blazium://open?path=…  ·  blazium://load?path=…  ·  blazium://install?version=…  ·  blazium://hub"
 autowrap_mode = 3
