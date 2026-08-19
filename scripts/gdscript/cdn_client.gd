@@ -96,17 +96,17 @@ static func editors_path(channel: String, version: String) -> String:
 	return "/%s/%s/editors.json" % [channel.strip_edges().to_lower(), version.strip_edges()]
 
 
-static func articles_rss_path() -> String:
+func articles_rss_path() -> String:
 	return "/articles/rss.xml"
 
 
-static func article_bbcode_path(slug: String) -> String:
+func article_bbcode_path(slug: String) -> String:
 	if not HubSanitize.is_valid_slug(slug):
 		return ""
 	return "/articles/%s/content.bbcode" % slug.strip_edges()
 
 
-static func article_meta_path(slug: String) -> String:
+func article_meta_path(slug: String) -> String:
 	if not HubSanitize.is_valid_slug(slug):
 		return ""
 	return "/articles/%s/meta.json" % slug.strip_edges()

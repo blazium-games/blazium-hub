@@ -16,7 +16,7 @@ layout_mode = 2
 [node name="Title" type="Label" parent="Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_type_variation = &"HeaderLabel"
+theme_type_variation = &"SmallHeaderLabel"
 text = "News"
 
 [node name="BackNewsBtn" type="Button" parent="Header"]
@@ -36,11 +36,15 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="NewsList" type="ItemList" parent="NewsListPanel"]
-unique_name_in_owner = true
+[node name="ScrollContainer" type="ScrollContainer" parent="NewsListPanel"]
 layout_mode = 2
 size_flags_vertical = 3
-allow_reselect = true
+
+[node name="NewsList" type="VBoxContainer" parent="NewsListPanel/ScrollContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
 
 [node name="NewsDetailPanel" type="VBoxContainer" parent="."]
 unique_name_in_owner = true
@@ -50,6 +54,7 @@ size_flags_vertical = 3
 
 [node name="ArticleTitle" type="Label" parent="NewsDetailPanel"]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 autowrap_mode = 3

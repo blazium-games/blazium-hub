@@ -13,7 +13,7 @@ script = ExtResource("1")
 
 [node name="Title" type="Label" parent="."]
 layout_mode = 2
-theme_type_variation = &"HeaderLabel"
+theme_type_variation = &"SmallHeaderLabel"
 text = "Settings"
 
 [node name="CliRow" type="HBoxContainer" parent="."]

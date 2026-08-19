@@ -1,0 +1,57 @@
+[gd_scene load_steps=3 format=3 uid="uid://doo8gnasnlvcl"]
+
+[ext_resource type="Script" uid="uid://vmq6w5twl1yi" path="res://scenes/views/news_panel.gd" id="1_3qxh1"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hmhwl"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.164706, 0.0784314, 0.207843, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="NewsPanel" type="PanelContainer"]
+offset_right = 331.0
+offset_bottom = 70.0
+size_flags_horizontal = 3
+focus_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_hmhwl")
+script = ExtResource("1_3qxh1")
+header = "Header"
+desc = "Description"
+date = "12/12/2012"
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="HBoxContainer" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="HeaderLabel" type="Label" parent="VBox/HBoxContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SmallHeaderLabel"
+text = "Header"
+autowrap_mode = 2
+
+[node name="DateLabel" type="Label" parent="VBox/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 8
+text = "12/12/2012"
+
+[node name="DescLabel" type="Label" parent="VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.74558, 0.74558, 0.74558, 1)
+text = "Description"
+autowrap_mode = 2

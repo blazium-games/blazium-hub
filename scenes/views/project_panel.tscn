@@ -1,9 +1,8 @@
-[gd_scene load_steps=9 format=3 uid="uid://dywhduguhxgxf"]
+[gd_scene load_steps=8 format=3 uid="uid://dywhduguhxgxf"]
 
 [ext_resource type="Texture2D" uid="uid://cc3g04ber7v5v" path="res://icon.svg" id="1_6x3v3"]
 [ext_resource type="Script" uid="uid://c8y6gcxgr1063" path="res://scenes/views/project_panel.gd" id="1_vafae"]
 [ext_resource type="Texture2D" uid="uid://dw5b24pbe8hrx" path="res://assets/icon_mask.svg" id="2_m6xbw"]
-[ext_resource type="FontFile" uid="uid://b612u8fpchism" path="res://assets/DMSans-ExtraBold.ttf" id="3_t6fvq"]
 [ext_resource type="Texture2D" uid="uid://b0hls6j1yg6fa" path="res://assets/icons/star.svg" id="5_8c8ro"]
 [ext_resource type="Texture2D" uid="uid://bn5qdd0oel8hl" path="res://assets/icons/star_filled.svg" id="6_vdu88"]
 [ext_resource type="Texture2D" uid="uid://d3j46d25wtrw6" path="res://assets/icons/menu.svg" id="7_vdu88"]
@@ -68,8 +67,7 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 0
-theme_override_fonts/font = ExtResource("3_t6fvq")
-theme_override_font_sizes/font_size = 24
+theme_type_variation = &"SmallHeaderLabel"
 text = "Project Name"
 
 [node name="FavoriteButton" type="TextureButton" parent="HBox/VBox/HBoxContainer2"]
