@@ -1,6 +1,6 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=2 format=3 uid="uid://c5co428sgius1"]
 
-[ext_resource type="Script" path="res://scripts/gdscript/projects_view.gd" id="1"]
+[ext_resource type="Script" uid="uid://ph6qxr5yxat" path="res://scripts/gdscript/projects_view.gd" id="1"]
 
 [node name="ProjectsView" type="VBoxContainer"]
 anchors_preset = 15
@@ -16,37 +16,36 @@ layout_mode = 2
 [node name="Title" type="Label" parent="Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 22
+theme_type_variation = &"HeaderLabel"
 text = "Projects"
 
 [node name="AddProjectBtn" type="Button" parent="Header"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Add folder"
+theme_type_variation = &"FilledButton"
+text = "Add Project"
 
-[node name="RemoveProjectBtn" type="Button" parent="Header"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Remove"
-
-[node name="OpenProjectBtn" type="Button" parent="Header"]
-unique_name_in_owner = true
-layout_mode = 2
-text = "Open"
-
-[node name="ProjectList" type="ItemList" parent="."]
-unique_name_in_owner = true
+[node name="ScrollContainer" type="ScrollContainer" parent="."]
 layout_mode = 2
 size_flags_vertical = 3
+follow_focus = true
+draw_focus_border = true
+
+[node name="ProjectList" type="VBoxContainer" parent="ScrollContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 8
 
 [node name="ProjectsStatus" type="Label" parent="."]
 unique_name_in_owner = true
 layout_mode = 2
-text = ""
 
 [node name="ProjectFolderDialog" type="FileDialog" parent="."]
 unique_name_in_owner = true
-title = "Select project folder"
+title = "Open a Directory"
+ok_button_text = "Select Current Folder"
+file_mode = 2
 access = 2
 use_native_dialog = true
-file_mode = 2

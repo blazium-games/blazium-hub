@@ -1,0 +1,126 @@
+[gd_scene load_steps=9 format=3 uid="uid://dywhduguhxgxf"]
+
+[ext_resource type="Texture2D" uid="uid://cc3g04ber7v5v" path="res://icon.svg" id="1_6x3v3"]
+[ext_resource type="Script" uid="uid://c8y6gcxgr1063" path="res://scenes/views/project_panel.gd" id="1_vafae"]
+[ext_resource type="Texture2D" uid="uid://dw5b24pbe8hrx" path="res://assets/icon_mask.svg" id="2_m6xbw"]
+[ext_resource type="FontFile" uid="uid://b612u8fpchism" path="res://assets/DMSans-ExtraBold.ttf" id="3_t6fvq"]
+[ext_resource type="Texture2D" uid="uid://b0hls6j1yg6fa" path="res://assets/icons/star.svg" id="5_8c8ro"]
+[ext_resource type="Texture2D" uid="uid://bn5qdd0oel8hl" path="res://assets/icons/star_filled.svg" id="6_vdu88"]
+[ext_resource type="Texture2D" uid="uid://d3j46d25wtrw6" path="res://assets/icons/menu.svg" id="7_vdu88"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_m6xbw"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.164706, 0.0784314, 0.207843, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="ProjectPanel" type="PanelContainer"]
+self_modulate = Color(1, 1, 1, 0.65098)
+offset_right = 575.0
+offset_bottom = 136.0
+size_flags_horizontal = 3
+focus_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_m6xbw")
+script = ExtResource("1_vafae")
+project_name = "Project Name"
+project_path = "Path/to/project"
+
+[node name="HBox" type="HBoxContainer" parent="."]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="ProjectIconMask" type="TextureRect" parent="HBox"]
+clip_children = 2
+custom_minimum_size = Vector2(128, 128)
+layout_mode = 2
+texture = ExtResource("2_m6xbw")
+expand_mode = 1
+
+[node name="ProjectIconTextureRect" type="TextureRect" parent="HBox/ProjectIconMask"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("1_6x3v3")
+expand_mode = 1
+
+[node name="VBox" type="VBoxContainer" parent="HBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="HBox/VBox"]
+layout_mode = 2
+
+[node name="ProjectNameLabel" type="Label" parent="HBox/VBox/HBoxContainer2"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_fonts/font = ExtResource("3_t6fvq")
+theme_override_font_sizes/font_size = 24
+text = "Project Name"
+
+[node name="FavoriteButton" type="TextureButton" parent="HBox/VBox/HBoxContainer2"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 10
+toggle_mode = true
+texture_normal = ExtResource("5_8c8ro")
+texture_pressed = ExtResource("6_vdu88")
+
+[node name="ProjectPathLabel" type="Label" parent="HBox/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Path/to/project"
+text_overrun_behavior = 3
+
+[node name="HBoxContainer" type="HBoxContainer" parent="HBox/VBox"]
+layout_mode = 2
+
+[node name="BlaziumVersionButton" type="OptionButton" parent="HBox/VBox/HBoxContainer"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+alignment = 1
+text_overrun_behavior = 3
+selected = 0
+fit_to_longest_item = false
+item_count = 1
+popup/item_0/text = "Blazium v0.0.0"
+popup/item_0/id = 0
+
+[node name="OpenProjectButton" type="Button" parent="HBox/VBox/HBoxContainer"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+size_flags_horizontal = 10
+theme_type_variation = &"FilledButton"
+text = "Open Project"
+
+[node name="ProjectSettingsButton" type="MenuButton" parent="HBox/VBox/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 2
+size_mode = 2
+icon = ExtResource("7_vdu88")
+flat = false
+icon_alignment = 1
+item_count = 1
+popup/item_0/text = "Remove"
+popup/item_0/id = 0

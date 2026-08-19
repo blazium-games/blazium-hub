@@ -44,23 +44,31 @@ justamcp/tools/project_tools=true
 
 [display]
 
+window/size/viewport_width=1100
+window/size/viewport_height=720
 window/size/min_viewport_width=800
 window/size/min_viewport_height=520
 
 [gui]
 
 theme/base_color=Color(0.137255, 0.109804, 0.215686, 1)
-theme/accent_color=Color(0.462745, 0.223529, 0.752941, 1)
+theme/accent_color=Color(0.678431, 0.254902, 0.870588, 1)
 theme/font_color_override=3
 theme/custom_font_color=Color(0.941176, 0.913725, 1, 1)
 theme/font_outline_color=Color(0.08, 0.08, 0.08, 0.45098)
+theme/contrast=-1.0
+theme/normal_contrast=-0.169
+theme/hover_contrast=-0.4
+theme/pressed_contrast=-0.245
 theme/border_width=1
-theme/corner_radius=4
+theme/corner_radius=10
+theme/font_size=20
+theme/custom_font="uid://by4oenhqm5ind"
 theme/default_font_multichannel_signed_distance_field=true
+theme/custom="uid://57b1m6dp53ek"
 
 [rendering]
 
-textures/canvas_textures/default_texture_filter=0
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 lights_and_shadows/positional_shadow/soft_shadow_filter_quality=0

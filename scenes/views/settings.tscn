@@ -1,6 +1,6 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=2 format=3 uid="uid://biw56b4kc51k8"]
 
-[ext_resource type="Script" path="res://scripts/gdscript/settings_view.gd" id="1"]
+[ext_resource type="Script" uid="uid://cbyrfrfne6mb8" path="res://scripts/gdscript/settings_view.gd" id="1"]
 
 [node name="SettingsView" type="VBoxContainer"]
 anchors_preset = 15
@@ -13,15 +13,15 @@ script = ExtResource("1")
 
 [node name="Title" type="Label" parent="."]
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
+theme_type_variation = &"HeaderLabel"
 text = "Settings"
 
 [node name="CliRow" type="HBoxContainer" parent="."]
 layout_mode = 2
 
 [node name="CliLabel" type="Label" parent="CliRow"]
-layout_mode = 2
 custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
 text = "blazium-cli path"
 
 [node name="CliPathEdit" type="LineEdit" parent="CliRow"]
@@ -39,8 +39,8 @@ text = "Browse"
 layout_mode = 2
 
 [node name="InstallLabel" type="Label" parent="InstallRow"]
-layout_mode = 2
 custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
 text = "Editor install path"
 
 [node name="InstallPathEdit" type="LineEdit" parent="InstallRow"]
@@ -51,37 +51,34 @@ size_flags_horizontal = 3
 [node name="SetInstallPathBtn" type="Button" parent="InstallRow"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"FilledButton"
 text = "Apply"
 
 [node name="CloseToTrayCheck" type="CheckBox" parent="."]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Close window to system tray (Windows)"
+alignment = 1
 
 [node name="CheckUpgradeBtn" type="Button" parent="."]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"FilledButton"
 text = "Check blazium-cli updates"
-
-[node name="LogsLabel" type="Label" parent="."]
-layout_mode = 2
-text = "Logs"
-
-[node name="LogsEdit" type="TextEdit" parent="."]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 180)
-layout_mode = 2
-size_flags_vertical = 3
-editable = false
-wrap_mode = 1
-placeholder_text = "Session logs from Hub and blazium-cli…"
 
 [node name="LogsBtnRow" type="HBoxContainer" parent="."]
 layout_mode = 2
 
+[node name="LogsLabel" type="Label" parent="LogsBtnRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SmallHeaderLabel"
+text = "  Logs  "
+
 [node name="CopyLogsBtn" type="Button" parent="LogsBtnRow"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"FilledButton"
 text = "Copy"
 
 [node name="ClearLogsBtn" type="Button" parent="LogsBtnRow"]
@@ -89,19 +86,28 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Clear"
 
+[node name="LogsEdit" type="TextEdit" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 180)
+layout_mode = 2
+size_flags_vertical = 3
+placeholder_text = "Session logs from Hub and blazium-cli…"
+editable = false
+wrap_mode = 1
+
 [node name="UriHelp" type="Label" parent="."]
 layout_mode = 2
-autowrap_mode = 3
 text = "URI scheme: blazium://open?path=…  ·  blazium://load?path=…  ·  blazium://install?version=…  ·  blazium://hub"
+autowrap_mode = 3
 
 [node name="SettingsStatus" type="Label" parent="."]
 unique_name_in_owner = true
 layout_mode = 2
-text = ""
 
 [node name="CliFileDialog" type="FileDialog" parent="."]
 unique_name_in_owner = true
-title = "Select blazium-cli"
+title = "Open a File"
+ok_button_text = "Open"
+file_mode = 0
 access = 2
 use_native_dialog = true
-file_mode = 0

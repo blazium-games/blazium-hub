@@ -1,6 +1,6 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=2 format=3 uid="uid://w0o3j34apve0"]
 
-[ext_resource type="Script" path="res://scripts/gdscript/news_view.gd" id="1"]
+[ext_resource type="Script" uid="uid://b02kpc5tbl0n7" path="res://scripts/gdscript/news_view.gd" id="1"]
 
 [node name="NewsView" type="VBoxContainer"]
 anchors_preset = 15
@@ -16,7 +16,7 @@ layout_mode = 2
 [node name="Title" type="Label" parent="Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 22
+theme_type_variation = &"HeaderLabel"
 text = "News"
 
 [node name="BackNewsBtn" type="Button" parent="Header"]
@@ -28,6 +28,7 @@ text = "Back"
 [node name="RefreshNewsBtn" type="Button" parent="Header"]
 unique_name_in_owner = true
 layout_mode = 2
+theme_type_variation = &"FilledButton"
 text = "Refresh"
 
 [node name="NewsListPanel" type="VBoxContainer" parent="."]
@@ -40,7 +41,6 @@ unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
 allow_reselect = true
-auto_height = false
 
 [node name="NewsDetailPanel" type="VBoxContainer" parent="."]
 unique_name_in_owner = true
@@ -53,29 +53,25 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_override_font_sizes/font_size = 18
 autowrap_mode = 3
-text = ""
 
 [node name="ArticleHosts" type="RichTextLabel" parent="NewsDetailPanel"]
 unique_name_in_owner = true
 visible = false
 layout_mode = 2
+focus_mode = 2
+bbcode_enabled = true
 fit_content = true
 scroll_active = false
-bbcode_enabled = true
 selection_enabled = true
-text = ""
 
 [node name="ArticleBody" type="RichTextLabel" parent="NewsDetailPanel"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
+focus_mode = 2
 bbcode_enabled = true
-fit_content = false
-scroll_active = true
 selection_enabled = true
-text = ""
 
 [node name="NewsStatus" type="Label" parent="."]
 unique_name_in_owner = true
 layout_mode = 2
-text = ""
