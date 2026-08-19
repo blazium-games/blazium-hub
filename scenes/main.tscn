@@ -1,4 +1,4 @@
-[gd_scene load_steps=24 format=3 uid="uid://cy2ibvtgps8sx"]
+[gd_scene load_steps=25 format=3 uid="uid://cy2ibvtgps8sx"]
 
 [ext_resource type="Script" uid="uid://smaced30rdjb" path="res://scripts/gdscript/main.gd" id="1"]
 [ext_resource type="PackedScene" uid="uid://c5co428sgius1" path="res://scenes/views/projects.tscn" id="2"]
@@ -66,6 +66,17 @@ corner_radius_bottom_left = 10
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_85g3d"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_choun"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tipki"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.164706, 0.0784314, 0.207843, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -227,6 +238,7 @@ metadata/_tab_index = 3
 
 [node name="StatusBar" type="PanelContainer" parent="PanelContainer/Root"]
 layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_tipki")
 
 [node name="StatusLabel" type="Label" parent="PanelContainer/Root/StatusBar"]
 unique_name_in_owner = true

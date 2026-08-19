@@ -26,6 +26,7 @@ func _ready() -> void:
 		HubUpdates.status_changed.connect(_on_error)
 	_select_tab(0)
 	call_deferred("_initial_refresh")
+	DisplayServer.window_set_min_size(Vector2i(800, 520))
 
 
 func _select_tab(idx: int) -> void:

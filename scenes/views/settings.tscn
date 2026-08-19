@@ -88,7 +88,7 @@ text = "Clear"
 
 [node name="LogsEdit" type="TextEdit" parent="."]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 180)
+custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 size_flags_vertical = 3
 placeholder_text = "Session logs from Hub and blazium-cli…"
