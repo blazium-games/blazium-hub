@@ -1,0 +1,33 @@
+[gd_scene load_steps=2 format=3 uid="uid://qypcdl0rxl8i"]
+
+[ext_resource type="Script" path="res://scripts/gdscript/theme_preview.gd" id="1"]
+
+[node name="ThemePreview" type="VBoxContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+script = ExtResource("1")
+
+[node name="Title" type="Label" parent="."]
+layout_mode = 2
+theme_type_variation = &"SmallHeaderLabel"
+text = "Theme Preview"
+
+[node name="ItemList" type="ItemList" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 200)
+layout_mode = 2
+size_flags_vertical = 3
+allow_reselect = true
+item_count = 8
+item_0/text = "Button"
+item_1/text = "Label"
+item_2/text = "LineEdit"
+item_3/text = "TextEdit"
+item_4/text = "CheckBox"
+item_5/text = "OptionButton"
+item_6/text = "HSlider"
+item_7/text = "ProgressBar"
