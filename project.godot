@@ -1,14 +1,24 @@
 ; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
 config_version=5
 
 [application]
 
 config/name="Blazium Hub"
-config/version="0.1.0"
 config/description="Desktop Hub for Blazium editors and projects (CDN + blazium-cli)."
+config/version="0.1.0"
 run/main_scene="res://scenes/main.tscn"
-config/features=PackedStringArray("4.3", "GL Compatibility")
+config/features=PackedStringArray("4.3.2", "GL Compatibility")
 run/low_processor_mode=true
+boot_splash/show_image=false
+boot_splash/fullsize=false
+boot_splash/use_filter=false
 config/icon="res://assets/icons/icon.svg"
 config/windows_native_icon="res://assets/icons/icon.svg"
 
@@ -16,7 +26,6 @@ config/windows_native_icon="res://assets/icons/icon.svg"
 
 HubSettings="*res://autoload/hub_settings.gd"
 HubLog="*res://autoload/hub_log.gd"
-HubRemoteSecret="*res://scripts/gdscript/hub_remote_secret.gd"
 HubCli="*res://scripts/gdscript/hub_cli.gd"
 CdnClient="*res://scripts/gdscript/cdn_client.gd"
 HubState="*res://scripts/gdscript/hub_state.gd"
@@ -24,14 +33,14 @@ UriRouter="*res://scripts/gdscript/uri_router.gd"
 HubUpdates="*res://scripts/gdscript/hub_updates.gd"
 SingleInstance="*res://autoload/single_instance.gd"
 SystemTray="*res://autoload/system_tray.gd"
+HubRemoteSecret="*res://scripts/gdscript/hub_remote_secret.gd"
 
 [blazium]
 
 remote_control/server_enabled=true
-remote_control/allow_runtime=true
 remote_control/server_port=39218
-remote_control/bind_address="127.0.0.1"
-remote_control/allow_eval=false
+remote_control/allow_runtime=true
+justamcp/tools/project_tools=true
 
 [display]
 
@@ -39,26 +48,30 @@ window/size/viewport_width=1100
 window/size/viewport_height=720
 window/size/min_viewport_width=800
 window/size/min_viewport_height=520
-window/vsync/vsync_mode=1
+
+[gui]
+
+theme/base_color=Color(0.137255, 0.109804, 0.215686, 1)
+theme/accent_color=Color(0.678431, 0.254902, 0.870588, 1)
+theme/font_color_override=3
+theme/custom_font_color=Color(0.941176, 0.913725, 1, 1)
+theme/font_outline_color=Color(0.08, 0.08, 0.08, 0.45098)
+theme/contrast=-1.0
+theme/normal_contrast=-0.169
+theme/hover_contrast=-0.4
+theme/pressed_contrast=-0.245
+theme/border_width=1
+theme/corner_radius=10
+theme/custom_font="uid://by4oenhqm5ind"
+theme/default_font_multichannel_signed_distance_field=true
+theme/custom="uid://57b1m6dp53ek"
 
 [rendering]
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
-renderer/gl_compatibility/driver.windows="opengl3"
-textures/canvas_textures/default_texture_filter=0
-anti_aliasing/quality/msaa_2d=0
-anti_aliasing/quality/msaa_3d=0
-anti_aliasing/quality/screen_space_aa=0
-anti_aliasing/quality/use_taa=false
-anti_aliasing/quality/use_debanding=false
 lights_and_shadows/positional_shadow/soft_shadow_filter_quality=0
-environment/defaults/default_clear_color=Color(0.12, 0.13, 0.15, 1)
+environment/defaults/default_clear_color=Color(0.137255, 0.109804, 0.215686, 1)
+renderer/gl_compatibility/driver.windows="opengl3"
 environment/glow/enabled=false
 environment/volumetric_fog/enabled=false
-occlusion_culling/use_occlusion_culling=false
-
-[xr]
-
-openxr/enabled=false
-shaders/enabled=false

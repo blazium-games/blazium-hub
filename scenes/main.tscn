@@ -1,10 +1,79 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=26 format=3 uid="uid://cy2ibvtgps8sx"]
 
-[ext_resource type="Script" path="res://scripts/gdscript/main.gd" id="1"]
-[ext_resource type="PackedScene" path="res://scenes/views/projects.tscn" id="2"]
-[ext_resource type="PackedScene" path="res://scenes/views/editors.tscn" id="3"]
-[ext_resource type="PackedScene" path="res://scenes/views/settings.tscn" id="4"]
-[ext_resource type="PackedScene" path="res://scenes/views/news.tscn" id="5"]
+[ext_resource type="Script" uid="uid://smaced30rdjb" path="res://scripts/gdscript/main.gd" id="1"]
+[ext_resource type="PackedScene" uid="uid://c5co428sgius1" path="res://scenes/views/projects.tscn" id="2"]
+[ext_resource type="Texture2D" uid="uid://c0uup1xevqtvg" path="res://small_icon.svg" id="2_tbgi4"]
+[ext_resource type="PackedScene" uid="uid://c3vb23b8qjbvk" path="res://scenes/views/editors.tscn" id="3"]
+[ext_resource type="FontFile" uid="uid://b612u8fpchism" path="res://assets/DMSans-ExtraBold.ttf" id="3_o6xl0"]
+[ext_resource type="PackedScene" uid="uid://biw56b4kc51k8" path="res://scenes/views/settings.tscn" id="4"]
+[ext_resource type="PackedScene" uid="uid://w0o3j34apve0" path="res://scenes/views/news.tscn" id="5"]
+[ext_resource type="Texture2D" uid="uid://bckonu3d7gp0" path="res://assets/icons/discord.svg" id="8_tipki"]
+
+[sub_resource type="Gradient" id="Gradient_tefeu"]
+colors = PackedColorArray(0.262745, 0.160784, 0.407843, 1, 0.172549, 0.0823529, 0.215686, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_o6xl0"]
+gradient = SubResource("Gradient_tefeu")
+fill_from = Vector2(0, 1)
+fill_to = Vector2(0, 0)
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_tipki"]
+texture = SubResource("GradientTexture2D_o6xl0")
+
+[sub_resource type="Gradient" id="Gradient_o6xl0"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0.478431)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_tipki"]
+frequency = 0.4717
+fractal_type = 0
+cellular_distance_function = 1
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_85g3d"]
+seamless = true
+color_ramp = SubResource("Gradient_o6xl0")
+noise = SubResource("FastNoiseLite_tipki")
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_ya4ey"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o6xl0"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.266667, 0.164706, 0.411765, 1)
+draw_center = false
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_tbgi4"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_jyhfs"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_tbgi4"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_tefeu"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_o6xl0"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_tipki"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_85g3d"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_choun"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tipki"]
+content_margin_left = 8.0
+content_margin_top = 4.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+bg_color = Color(0.164706, 0.0784314, 0.207843, 1)
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -15,63 +84,115 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1")
 
-[node name="Bg" type="ColorRect" parent="."]
+[node name="PanelContainer" type="PanelContainer" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.12, 0.13, 0.15, 1)
+theme_override_styles/panel = SubResource("StyleBoxTexture_tipki")
 
-[node name="Root" type="VBoxContainer" parent="."]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+[node name="PanelMask" type="TextureRect" parent="PanelContainer"]
+mask_parent = 1
+texture_repeat = 2
+layout_mode = 2
+texture = SubResource("NoiseTexture2D_85g3d")
+
+[node name="Root" type="VBoxContainer" parent="PanelContainer"]
+layout_mode = 2
 theme_override_constants/separation = 0
 
-[node name="TopBar" type="HBoxContainer" parent="Root"]
+[node name="PanelContainer" type="PanelContainer" parent="PanelContainer/Root"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_ya4ey")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer/Root/PanelContainer"]
+layout_mode = 2
+
+[node name="Control" type="Control" parent="PanelContainer/Root/PanelContainer/HBoxContainer"]
+layout_mode = 2
+
+[node name="SmallIcon" type="TextureRect" parent="PanelContainer/Root/PanelContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+texture = ExtResource("2_tbgi4")
+
+[node name="Brand2" type="Label" parent="PanelContainer/Root/PanelContainer/HBoxContainer"]
+custom_minimum_size = Vector2(0, 32)
+layout_mode = 2
+theme_type_variation = &"SmallHeaderLabel"
+text = " Blazium Hub "
+vertical_alignment = 1
+
+[node name="TopButtons" type="HBoxContainer" parent="PanelContainer/Root/PanelContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 1
+
+[node name="NavProjects" type="Button" parent="PanelContainer/Root/PanelContainer/TopButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_override_colors/font_hover_color = Color(0.752941, 0.482353, 0.878431, 1)
+theme_override_colors/font_focus_color = Color(0.752941, 0.482353, 0.878431, 1)
+theme_override_fonts/font = ExtResource("3_o6xl0")
+theme_override_font_sizes/font_size = 20
+theme_override_styles/focus = SubResource("StyleBoxFlat_o6xl0")
+toggle_mode = true
+button_pressed = true
+button_group = SubResource("ButtonGroup_tbgi4")
+text = "Projects"
+flat = true
+
+[node name="NavEditors" type="Button" parent="PanelContainer/Root/PanelContainer/TopButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_override_colors/font_hover_color = Color(0.752941, 0.482353, 0.878431, 1)
+theme_override_colors/font_focus_color = Color(0.752941, 0.482353, 0.878431, 1)
+theme_override_fonts/font = ExtResource("3_o6xl0")
+theme_override_font_sizes/font_size = 20
+theme_override_styles/focus = SubResource("StyleBoxFlat_o6xl0")
+toggle_mode = true
+button_group = SubResource("ButtonGroup_tbgi4")
+text = "Editors"
+flat = true
+
+[node name="NavNews" type="Button" parent="PanelContainer/Root/PanelContainer/TopButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_override_colors/font_hover_color = Color(0.752941, 0.482353, 0.878431, 1)
+theme_override_colors/font_focus_color = Color(0.752941, 0.482353, 0.878431, 1)
+theme_override_fonts/font = ExtResource("3_o6xl0")
+theme_override_font_sizes/font_size = 20
+theme_override_styles/focus = SubResource("StyleBoxFlat_o6xl0")
+toggle_mode = true
+button_group = SubResource("ButtonGroup_tbgi4")
+text = "News"
+flat = true
+
+[node name="NavSettings" type="Button" parent="PanelContainer/Root/PanelContainer/TopButtons"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_override_colors/font_hover_color = Color(0.752941, 0.482353, 0.878431, 1)
+theme_override_colors/font_focus_color = Color(0.752941, 0.482353, 0.878431, 1)
+theme_override_fonts/font = ExtResource("3_o6xl0")
+theme_override_font_sizes/font_size = 20
+theme_override_styles/focus = SubResource("StyleBoxFlat_o6xl0")
+toggle_mode = true
+button_group = SubResource("ButtonGroup_tbgi4")
+text = "Settings"
+flat = true
+
+[node name="TopBar" type="HBoxContainer" parent="PanelContainer/Root"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Brand" type="Label" parent="Root/TopBar"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "  Blazium Hub  "
-
-[node name="NavProjects" type="Button" parent="Root/TopBar"]
-unique_name_in_owner = true
-layout_mode = 2
-toggle_mode = true
-button_pressed = true
-text = "Projects"
-
-[node name="NavEditors" type="Button" parent="Root/TopBar"]
-unique_name_in_owner = true
-layout_mode = 2
-toggle_mode = true
-text = "Editors"
-
-[node name="NavNews" type="Button" parent="Root/TopBar"]
-unique_name_in_owner = true
-layout_mode = 2
-toggle_mode = true
-text = "News"
-
-[node name="NavSettings" type="Button" parent="Root/TopBar"]
-unique_name_in_owner = true
-layout_mode = 2
-toggle_mode = true
-text = "Settings"
-
-[node name="Spacer" type="Control" parent="Root/TopBar"]
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="Margin" type="MarginContainer" parent="Root"]
+[node name="Margin" type="MarginContainer" parent="PanelContainer/Root"]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/margin_left = 16
@@ -79,32 +200,59 @@ theme_override_constants/margin_top = 12
 theme_override_constants/margin_right = 16
 theme_override_constants/margin_bottom = 8
 
-[node name="Pages" type="TabContainer" parent="Root/Margin"]
+[node name="Pages" type="TabContainer" parent="PanelContainer/Root/Margin"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_vertical = 3
+theme_override_styles/tab_focus = SubResource("StyleBoxEmpty_jyhfs")
+theme_override_styles/tab_disabled = SubResource("StyleBoxEmpty_tbgi4")
+theme_override_styles/tabbar_background = SubResource("StyleBoxEmpty_tefeu")
+theme_override_styles/panel = SubResource("StyleBoxEmpty_o6xl0")
+theme_override_styles/tab_selected = SubResource("StyleBoxEmpty_tipki")
+theme_override_styles/tab_hovered = SubResource("StyleBoxEmpty_85g3d")
+theme_override_styles/tab_unselected = SubResource("StyleBoxEmpty_choun")
+current_tab = 0
 tabs_visible = false
 
-[node name="ProjectsView" parent="Root/Margin/Pages" instance=ExtResource("2")]
+[node name="ProjectsView" parent="PanelContainer/Root/Margin/Pages" instance=ExtResource("2")]
 unique_name_in_owner = true
 layout_mode = 2
+metadata/_tab_index = 0
 
-[node name="EditorsView" parent="Root/Margin/Pages" instance=ExtResource("3")]
+[node name="EditorsView" parent="PanelContainer/Root/Margin/Pages" instance=ExtResource("3")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+metadata/_tab_index = 1
+
+[node name="NewsView" parent="PanelContainer/Root/Margin/Pages" instance=ExtResource("5")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+metadata/_tab_index = 2
+
+[node name="SettingsView" parent="PanelContainer/Root/Margin/Pages" instance=ExtResource("4")]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+metadata/_tab_index = 3
+
+[node name="StatusBar" type="PanelContainer" parent="PanelContainer/Root"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_tipki")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer/Root/StatusBar"]
+layout_mode = 2
+
+[node name="StatusLabel" type="Label" parent="PanelContainer/Root/StatusBar/HBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
-
-[node name="NewsView" parent="Root/Margin/Pages" instance=ExtResource("5")]
-unique_name_in_owner = true
-layout_mode = 2
-
-[node name="SettingsView" parent="Root/Margin/Pages" instance=ExtResource("4")]
-unique_name_in_owner = true
-layout_mode = 2
-
-[node name="StatusBar" type="PanelContainer" parent="Root"]
-layout_mode = 2
-
-[node name="StatusLabel" type="Label" parent="Root/StatusBar"]
-unique_name_in_owner = true
-layout_mode = 2
+size_flags_horizontal = 3
 text = "Ready"
+
+[node name="DiscordButton" type="TextureButton" parent="PanelContainer/Root/StatusBar/HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Join Discord Server"
+mouse_default_cursor_shape = 2
+texture_normal = ExtResource("8_tipki")

@@ -1,53 +1,58 @@
 extends VBoxContainer
 
-@onready var list: ItemList = %ProjectList
-@onready var add_btn: Button = %AddProjectBtn
-@onready var remove_btn: Button = %RemoveProjectBtn
-@onready var open_btn: Button = %OpenProjectBtn
-@onready var file_dialog: FileDialog = %ProjectFolderDialog
+const PROJECT_PANEL_SCENE: PackedScene = preload("res://scenes/views/project_panel.tscn")
+
+@onready var project_list: VBoxContainer = %ProjectList
+@onready var add_btn: Button = %AddProjectButton
+@onready var scan_btn: Button = %ScanFolderButton
+@onready var file_dialog: FileDialog = %ProjectFileDialog
+@onready var scan_dialog: FileDialog = %ScanFileDialog
 @onready var status: Label = %ProjectsStatus
 
 
 func _ready() -> void:
 	add_btn.pressed.connect(_on_add)
-	remove_btn.pressed.connect(_on_remove)
-	open_btn.pressed.connect(_on_open)
-	list.item_activated.connect(func(_i): _on_open())
-	file_dialog.dir_selected.connect(_on_dir_selected)
+	scan_btn.pressed.connect(_on_scan)
+	file_dialog.file_selected.connect(_on_project_file_selected)
+	scan_dialog.dir_selected.connect(_on_scan_dir_selected)
 	reload()
 
 
 func reload() -> void:
-	list.clear()
+	for child in project_list.get_children():
+		project_list.remove_child(child)
+		child.free()
 	for p in HubState.projects_list:
 		var label := str(p)
 		var path := str(p)
 		if typeof(p) == TYPE_DICTIONARY:
-			label = "%s  —  %s" % [str(p.get("name", "")), str(p.get("path", ""))]
+			label = str(p.get("name", ""))
 			path = str(p.get("path", path))
-		var idx := list.add_item(label)
-		list.set_item_metadata(idx, path)
-	if list.item_count == 0:
+		var project_panel: ProjectPanel = PROJECT_PANEL_SCENE.instantiate()
+		project_panel.project_path = path
+		project_panel.project_name = label
+		project_panel.open_project.connect(_on_open)
+		project_panel.remove_project.connect(_on_remove)
+		project_list.add_child(project_panel)
+	if project_list.get_child_count() == 0:
 		status.text = "No projects registered. Add a project folder."
 	else:
-		status.text = "%d project(s)" % list.item_count
-
-
-func _selected_path() -> String:
-	var sels := list.get_selected_items()
-	if sels.is_empty():
-		return ""
-	return str(list.get_item_metadata(sels[0]))
+		status.text = "%d project(s)" % project_list.get_child_count()
 
 
 func _on_add() -> void:
 	file_dialog.popup_centered_ratio(0.6)
 
 
+func _on_scan() -> void:
+	scan_dialog.popup_centered_ratio(0.6)
+
+
 func _set_action_busy(busy: bool) -> void:
 	add_btn.disabled = busy
-	remove_btn.disabled = busy
-	open_btn.disabled = busy
+	scan_btn.disabled = busy
+	for child in project_list.get_children():
+		child.busy = busy
 
 
 func _on_dir_selected(dir: String) -> void:
@@ -62,14 +67,33 @@ func _on_dir_selected(dir: String) -> void:
 	reload()
 
 
-func _on_remove() -> void:
-	var path := _selected_path()
-	if path.is_empty():
-		status.text = "Select a project first"
-		return
-	status.text = "Removing…"
+func _on_scan_dir_selected(_dir: String):
+	status.text = "Scanning…"
 	_set_action_busy(true)
-	var data: Variant = await HubCli.projects_remove_async(path)
+	var dir: DirAccess = DirAccess.open(_dir)
+	if not dir:
+		_set_action_busy(false)
+		return
+	dir.list_dir_begin()
+	var next: String = dir.get_next()
+	while next:
+		if not dir.current_is_dir():
+			next = dir.get_next()
+			continue
+		var _dir_path: String = _dir.path_join(next)
+		if FileAccess.file_exists(_dir_path.path_join("project.godot")):
+			await HubCli.projects_add_async(_dir_path)
+		next = dir.get_next()
+	_set_action_busy(false)
+	HubState.refresh_projects()
+	reload()
+
+
+
+func _on_project_file_selected(_file: String):
+	status.text = "Adding…"
+	_set_action_busy(true)
+	var data: Variant = await HubCli.projects_add_async(_file.get_base_dir())
 	_set_action_busy(false)
 	if data == null:
 		status.text = HubCli.get_last_error()
@@ -78,14 +102,28 @@ func _on_remove() -> void:
 	reload()
 
 
-func _on_open() -> void:
-	var path := _selected_path()
-	if path.is_empty():
+func _on_remove(_path: String) -> void:
+	if _path.is_empty():
+		status.text = "Select a project first"
+		return
+	status.text = "Removing…"
+	_set_action_busy(true)
+	var data: Variant = await HubCli.projects_remove_async(_path)
+	_set_action_busy(false)
+	if data == null:
+		status.text = HubCli.get_last_error()
+		return
+	HubState.refresh_projects()
+	reload()
+
+
+func _on_open(_path: String) -> void:
+	if _path.is_empty():
 		status.text = "Select a project first"
 		return
 	status.text = "Opening via blazium-cli…"
 	_set_action_busy(true)
-	var data: Variant = await HubCli.open_project_async(path)
+	var data: Variant = await HubCli.open_project_async(_path)
 	_set_action_busy(false)
 	if data == null:
 		status.text = HubCli.get_last_error()

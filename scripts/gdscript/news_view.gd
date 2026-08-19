@@ -2,12 +2,13 @@ extends VBoxContainer
 
 const NewsFeed := preload("res://scripts/gdscript/news_feed.gd")
 const HubSanitize := preload("res://scripts/gdscript/hub_sanitize.gd")
+const NEWS_PANEL_SCENE: PackedScene = preload("res://scenes/views/news_panel.tscn")
 
 @onready var refresh_btn: Button = %RefreshNewsBtn
 @onready var back_btn: Button = %BackNewsBtn
 @onready var list_panel: Control = %NewsListPanel
 @onready var detail_panel: Control = %NewsDetailPanel
-@onready var news_list: ItemList = %NewsList
+@onready var news_list: VBoxContainer = %NewsList
 @onready var article_title: Label = %ArticleTitle
 @onready var article_hosts: RichTextLabel = %ArticleHosts
 @onready var article_body: RichTextLabel = %ArticleBody
@@ -21,9 +22,6 @@ var _opening: bool = false
 func _ready() -> void:
 	refresh_btn.pressed.connect(_on_refresh)
 	back_btn.pressed.connect(_show_list)
-	# Single-click selects; double-click / activate also opens.
-	news_list.item_selected.connect(_on_item_activated)
-	news_list.item_activated.connect(_on_item_activated)
 	article_body.bbcode_enabled = true
 	article_body.fit_content = false
 	article_body.scroll_active = true
@@ -123,38 +121,31 @@ func _on_refresh() -> void:
 
 
 func _populate_list() -> void:
-	news_list.clear()
+	for child in news_list.get_children():
+		news_list.remove_child(child)
+		child.free()
 	for item in _items:
 		var title := str(item.get("title", "Untitled"))
-		var date := NewsFeed.format_pub_date(str(item.get("pubDate", "")))
-		var desc := str(item.get("description", "")).strip_edges()
-		var label := title
+		var date: String = NewsFeed.format_pub_date(str(item.get("pubDate", "")))
 		if not date.is_empty():
-			label = "%s  —  %s" % [title, date]
-		if not desc.is_empty():
-			var snippet := desc
-			if snippet.length() > 120:
-				snippet = snippet.substr(0, 117) + "…"
-			label = "%s\n%s" % [label, snippet]
-		var idx := news_list.add_item(label)
-		news_list.set_item_metadata(idx, item)
+			var arr: PackedStringArray = date.split(" ")
+			date = "%s %s %s" % [arr[1], arr[2], arr[3]]
+		var desc := str(item.get("description", "")).strip_edges()
+		var news_panel: NewsPanel = NEWS_PANEL_SCENE.instantiate()
+		news_panel.header = title
+		news_panel.date = date
+		news_panel.desc = desc
+		news_panel.item = item
+		news_panel.open_news.connect(_on_item_activated)
+		news_list.add_child(news_panel)
 
 
-func _on_item_activated(index: int) -> void:
+func _on_item_activated(_item: Dictionary) -> void:
 	if _opening or _loading:
 		return
 	_opening = true
-	await _open_index(index)
+	await _open_article(_item)
 	_opening = false
-
-
-func _open_index(index: int) -> void:
-	if index < 0 or index >= news_list.item_count:
-		return
-	var item: Variant = news_list.get_item_metadata(index)
-	if typeof(item) != TYPE_DICTIONARY:
-		return
-	await _open_article(item)
 
 
 func _open_article(item: Dictionary) -> void:

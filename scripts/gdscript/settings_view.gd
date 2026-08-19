@@ -40,12 +40,8 @@ func _ready() -> void:
 func _refresh_logs() -> void:
 	if logs_edit == null or HubLog == null:
 		return
-	var at_bottom := true
-	if logs_edit.get_line_count() > 0:
-		at_bottom = logs_edit.scroll_vertical >= maxi(0, logs_edit.get_line_count() - 4)
 	logs_edit.text = HubLog.get_text()
-	if at_bottom:
-		logs_edit.scroll_vertical = logs_edit.get_line_count()
+	logs_edit.scroll_vertical = INF
 
 
 func _on_visibility_changed() -> void:

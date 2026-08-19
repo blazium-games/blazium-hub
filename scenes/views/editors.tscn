@@ -1,6 +1,6 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=2 format=3 uid="uid://c3vb23b8qjbvk"]
 
-[ext_resource type="Script" path="res://scripts/gdscript/editors_view.gd" id="1"]
+[ext_resource type="Script" uid="uid://dla5u1npuw4ji" path="res://scripts/gdscript/editors_view.gd" id="1"]
 
 [node name="EditorsView" type="VBoxContainer"]
 anchors_preset = 15
@@ -16,16 +16,19 @@ layout_mode = 2
 [node name="Title" type="Label" parent="Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 22
+theme_type_variation = &"SmallHeaderLabel"
 text = "Editors"
 
 [node name="ChannelOption" type="OptionButton" parent="Header"]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_default_cursor_shape = 2
 
 [node name="RefreshEditorsBtn" type="Button" parent="Header"]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_type_variation = &"FilledButton"
 text = "Refresh"
 
 [node name="Split" type="HSplitContainer" parent="."]
@@ -48,6 +51,7 @@ size_flags_vertical = 3
 [node name="UninstallBtn" type="Button" parent="Split/InstalledCol"]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_default_cursor_shape = 2
 text = "Uninstall selected"
 
 [node name="AvailableCol" type="VBoxContainer" parent="Split"]
@@ -66,22 +70,41 @@ size_flags_vertical = 3
 [node name="InstallBtn" type="Button" parent="Split/AvailableCol"]
 unique_name_in_owner = true
 layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_type_variation = &"FilledButton"
 text = "Install selected"
 
 [node name="EditorsStatus" type="Label" parent="."]
 unique_name_in_owner = true
 layout_mode = 2
-text = ""
 
-[node name="ConsoleLabel" type="Label" parent="."]
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
 layout_mode = 2
+
+[node name="ConsoleLabel" type="Label" parent="HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SmallHeaderLabel"
 text = "Console"
+
+[node name="CopyConsoleButton" type="Button" parent="HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_type_variation = &"FilledButton"
+text = "Copy"
+
+[node name="ClearConsoleButton" type="Button" parent="HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "Clear"
 
 [node name="EditorsConsole" type="TextEdit" parent="."]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(0, 140)
 layout_mode = 2
 size_flags_vertical = 3
+placeholder_text = "CLI and Hub messages appear here…"
 editable = false
 wrap_mode = 1
-placeholder_text = "CLI and Hub messages appear here…"

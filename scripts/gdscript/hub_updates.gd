@@ -122,8 +122,10 @@ func _ensure_dialog() -> void:
 	if _dialog != null and is_instance_valid(_dialog):
 		return
 	_dialog = ConfirmationDialog.new()
-	_dialog.title = "Update available"
+	_dialog.size.x = 600
+	_dialog.title = "Editor Update Available"
 	_dialog.ok_button_text = "Update"
+	_dialog.get_ok_button().theme_type_variation = "FilledButton"
 	_dialog.cancel_button_text = "Not now"
 	_dialog.confirmed.connect(_on_accepted)
 	_dialog.canceled.connect(_on_declined)
@@ -140,11 +142,12 @@ func _show_next() -> void:
 	var label := str(PRODUCT_LABELS.get(product, product))
 	var cur := str(_pending.get("current_version", ""))
 	var latest := str(_pending.get("latest_version", ""))
-	var body := "%s %s → %s is available.\nUpdate now?" % [label, cur if not cur.is_empty() else "(none)", latest]
+	var body := "%s version %s is now available, want to update the default editor version? Current version is %s" % [label, latest, cur if not cur.is_empty() else "(no default editor)"]
 	if product == "hub" and _hub_includes_cli:
 		body += "\nThis Hub update includes the latest blazium-cli."
 	_ensure_dialog()
 	_dialog.dialog_text = body
+	_dialog.dialog_autowrap = true
 	_dialog.popup_centered()
 
 
