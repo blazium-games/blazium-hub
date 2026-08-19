@@ -62,7 +62,6 @@ theme/hover_contrast=-0.4
 theme/pressed_contrast=-0.245
 theme/border_width=1
 theme/corner_radius=10
-theme/font_size=20
 theme/custom_font="uid://by4oenhqm5ind"
 theme/default_font_multichannel_signed_distance_field=true
 theme/custom="uid://57b1m6dp53ek"

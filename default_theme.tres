@@ -1,7 +1,41 @@
-[gd_resource type="Theme" load_steps=13 format=3 uid="uid://57b1m6dp53ek"]
+[gd_resource type="Theme" load_steps=17 format=3 uid="uid://57b1m6dp53ek"]
 
-[ext_resource type="FontFile" uid="uid://brnagmsag8n28" path="res://assets/Inter_18pt-SemiBold.ttf" id="1_3taad"]
+[ext_resource type="FontFile" uid="uid://b612u8fpchism" path="res://assets/DMSans-ExtraBold.ttf" id="1_3taad"]
+[ext_resource type="Texture2D" uid="uid://dluwmjqylqpxu" path="res://assets/icons/close.svg" id="1_7j863"]
 [ext_resource type="FontFile" uid="uid://c1y045upjdih7" path="res://assets/Inter_18pt-Regular.ttf" id="2_3taad"]
+[ext_resource type="FontFile" uid="uid://brnagmsag8n28" path="res://assets/Inter_18pt-SemiBold.ttf" id="3_50bnw"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_uwdo0"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.109804, 0.0862745, 0.172549, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.678431, 0.254902, 0.870588, 1)
+expand_margin_left = 8.0
+expand_margin_top = 32.0
+expand_margin_right = 8.0
+expand_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_u7cj8"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.164706, 0.0784314, 0.207843, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.266667, 0.164706, 0.411765, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_cefca"]
 content_margin_left = 8.0
@@ -157,9 +191,19 @@ corner_radius_bottom_left = 10
 
 [resource]
 default_font = ExtResource("2_3taad")
+AcceptDialog/constants/buttons_min_width = 128
+AcceptDialog/constants/close_h_offset = 20
+AcceptDialog/constants/close_v_offset = 28
+AcceptDialog/constants/title_height = 34
+AcceptDialog/font_sizes/title_font_size = 24
+AcceptDialog/fonts/title_font = ExtResource("1_3taad")
+AcceptDialog/icons/close = ExtResource("1_7j863")
+AcceptDialog/icons/close_pressed = ExtResource("1_7j863")
+AcceptDialog/styles/embedded_border = SubResource("StyleBoxFlat_uwdo0")
+AcceptDialog/styles/panel = SubResource("StyleBoxFlat_u7cj8")
 Button/colors/font_outline_color = Color(0.08, 0.08, 0.08, 1)
 Button/constants/outline_size = 1
-Button/fonts/font = ExtResource("1_3taad")
+Button/fonts/font = ExtResource("3_50bnw")
 Button/styles/disabled = SubResource("StyleBoxFlat_cefca")
 Button/styles/focus = SubResource("StyleBoxFlat_qnr3a")
 Button/styles/hover = SubResource("StyleBoxFlat_vdu88")
@@ -167,10 +211,11 @@ Button/styles/hover_pressed = SubResource("StyleBoxFlat_vdu88")
 Button/styles/normal = SubResource("StyleBoxFlat_ero5f")
 Button/styles/pressed = SubResource("StyleBoxFlat_vdu88")
 CheckButton/constants/outline_size = 1
-CheckButton/fonts/font = ExtResource("1_3taad")
+CheckButton/fonts/font = ExtResource("3_50bnw")
 FilledButton/base_type = &"Button"
+FilledButton/colors/font_outline_color = Color(0, 0, 0, 0.454902)
 FilledButton/constants/outline_size = 1
-FilledButton/fonts/font = ExtResource("1_3taad")
+FilledButton/fonts/font = ExtResource("3_50bnw")
 FilledButton/styles/disabled = SubResource("StyleBoxFlat_ed8xq")
 FilledButton/styles/focus = SubResource("StyleBoxFlat_qnr3a")
 FilledButton/styles/hover = SubResource("StyleBoxFlat_8c8ro")
@@ -179,11 +224,11 @@ FilledButton/styles/normal = SubResource("StyleBoxFlat_qrt5n")
 FilledButton/styles/pressed = SubResource("StyleBoxFlat_8c8ro")
 HeaderLabel/base_type = &"Label"
 HeaderLabel/font_sizes/font_size = 28
-HeaderLabel/fonts/font = ExtResource("1_3taad")
+HeaderLabel/fonts/font = ExtResource("3_50bnw")
 LineEdit/styles/focus = SubResource("StyleBoxFlat_3taad")
 LineEdit/styles/normal = SubResource("StyleBoxFlat_7j863")
 LineEdit/styles/read_only = SubResource("StyleBoxFlat_50bnw")
-OptionButton/fonts/font = ExtResource("1_3taad")
+OptionButton/fonts/font = ExtResource("3_50bnw")
 SmallHeaderLabel/base_type = &"Label"
 SmallHeaderLabel/font_sizes/font_size = 24
-SmallHeaderLabel/fonts/font = ExtResource("1_3taad")
+SmallHeaderLabel/fonts/font = ExtResource("3_50bnw")
