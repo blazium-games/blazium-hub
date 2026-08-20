@@ -1,4 +1,4 @@
-[gd_scene load_steps=26 format=3 uid="uid://cy2ibvtgps8sx"]
+[gd_scene load_steps=27 format=3 uid="uid://cy2ibvtgps8sx"]
 
 [ext_resource type="Script" uid="uid://smaced30rdjb" path="res://scripts/gdscript/main.gd" id="1"]
 [ext_resource type="PackedScene" uid="uid://c5co428sgius1" path="res://scenes/views/projects.tscn" id="2"]
@@ -69,11 +69,17 @@ corner_radius_bottom_left = 10
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_choun"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tipki"]
-content_margin_left = 8.0
-content_margin_top = 4.0
-content_margin_right = 8.0
-content_margin_bottom = 4.0
+content_margin_left = 4.0
+content_margin_top = 2.0
+content_margin_right = 4.0
+content_margin_bottom = 2.0
 bg_color = Color(0.164706, 0.0784314, 0.207843, 1)
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_yc10j"]
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -250,9 +256,19 @@ layout_mode = 2
 size_flags_horizontal = 3
 text = "Ready"
 
-[node name="DiscordButton" type="TextureButton" parent="PanelContainer/Root/StatusBar/HBoxContainer"]
+[node name="DiscordButton" type="Button" parent="PanelContainer/Root/StatusBar/HBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Join Discord Server"
 mouse_default_cursor_shape = 2
-texture_normal = ExtResource("8_tipki")
+theme_override_styles/disabled_mirrored = SubResource("StyleBoxEmpty_yc10j")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_yc10j")
+theme_override_styles/hover_pressed_mirrored = SubResource("StyleBoxEmpty_yc10j")
+theme_override_styles/hover_pressed = SubResource("StyleBoxEmpty_yc10j")
+theme_override_styles/hover_mirrored = SubResource("StyleBoxEmpty_yc10j")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_yc10j")
+theme_override_styles/pressed_mirrored = SubResource("StyleBoxEmpty_yc10j")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_yc10j")
+theme_override_styles/normal_mirrored = SubResource("StyleBoxEmpty_yc10j")
+theme_override_styles/normal = SubResource("StyleBoxEmpty_yc10j")
+icon = ExtResource("8_tipki")

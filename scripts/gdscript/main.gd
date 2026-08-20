@@ -10,7 +10,7 @@ extends Control
 @onready var editors_view: Control = %EditorsView
 @onready var news_view: Control = %NewsView
 @onready var settings_view: Control = %SettingsView
-@onready var discord_button: TextureButton = %DiscordButton
+@onready var discord_button: Button = %DiscordButton
 
 
 func _ready() -> void:
