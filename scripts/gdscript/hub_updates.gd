@@ -5,10 +5,11 @@ const HubSanitize := preload("res://scripts/gdscript/hub_sanitize.gd")
 
 signal status_changed(message: String)
 
-const PRODUCT_ORDER := ["hub", "cli", "editor", "templates"]
+const PRODUCT_ORDER := ["hub", "cli", "crash_reporter", "editor", "templates"]
 const PRODUCT_LABELS := {
 	"hub": "Blazium Hub",
 	"cli": "blazium-cli",
+	"crash_reporter": "Crash reporter",
 	"editor": "Blazium editor",
 	"templates": "Export templates",
 }
@@ -20,6 +21,7 @@ var _dialog: ConfirmationDialog
 var _pending: Dictionary = {}
 var _last_summary: String = ""
 var _hub_includes_cli: bool = false
+var _hub_includes_crash_reporter: bool = false
 
 
 func get_last_summary() -> String:
@@ -49,7 +51,8 @@ func install_root() -> String:
 
 
 ## True when catalog reports a Hub update (ignores session dismissals).
-## While true, standalone CLI updates are suppressed — Hub ships the newest CLI.
+## While true, standalone CLI and crash reporter updates are suppressed —
+## Hub ships the newest CLI and sidecar.
 func hub_update_outstanding(products: Array) -> bool:
 	return _find_product_status(products, "hub") != null
 
@@ -68,12 +71,13 @@ func _find_product_status(products: Array, name: String) -> Variant:
 	return null
 
 
-## Build ordered update prompt queue. Skips CLI when a Hub update is outstanding.
+## Build ordered update prompt queue. Skips CLI and crash reporter when a Hub
+## update is outstanding — Hub ships the newest CLI and sidecar.
 func build_update_queue(products: Array, dismissed: Dictionary) -> Array:
 	var hub_outstanding := hub_update_outstanding(products)
 	var queue: Array = []
 	for name in PRODUCT_ORDER:
-		if name == "cli" and hub_outstanding:
+		if (name == "cli" or name == "crash_reporter") and hub_outstanding:
 			continue
 		if dismissed.has(name):
 			continue
@@ -82,6 +86,15 @@ func build_update_queue(products: Array, dismissed: Dictionary) -> Array:
 			continue
 		queue.append(item)
 	return queue
+
+
+func prompt_body(product: String, latest: String, current: String) -> String:
+	var label := str(PRODUCT_LABELS.get(product, product))
+	if product == "editor" or product == "templates":
+		var cur_ed := current if not current.is_empty() else "(no default editor)"
+		return "%s version %s is now available, want to update the default editor version? Current version is %s" % [label, latest, cur_ed]
+	var cur := current if not current.is_empty() else "(unknown)"
+	return "%s %s is available (current %s). Update now?" % [label, latest, cur]
 
 
 func check_and_prompt(clear_session_dismissals: bool = false) -> void:
@@ -106,6 +119,9 @@ func check_and_prompt(clear_session_dismissals: bool = false) -> void:
 			products = p
 	_hub_includes_cli = (
 		hub_update_outstanding(products) and _find_product_status(products, "cli") != null
+	)
+	_hub_includes_crash_reporter = (
+		hub_update_outstanding(products) and _find_product_status(products, "crash_reporter") != null
 	)
 	_queue = build_update_queue(products, _dismissed)
 	if _queue.is_empty():
@@ -139,12 +155,13 @@ func _show_next() -> void:
 		return
 	_pending = _queue.pop_front()
 	var product := str(_pending.get("product", ""))
-	var label := str(PRODUCT_LABELS.get(product, product))
 	var cur := str(_pending.get("current_version", ""))
 	var latest := str(_pending.get("latest_version", ""))
-	var body := "%s version %s is now available, want to update the default editor version? Current version is %s" % [label, latest, cur if not cur.is_empty() else "(no default editor)"]
+	var body := prompt_body(product, latest, cur)
 	if product == "hub" and _hub_includes_cli:
 		body += "\nThis Hub update includes the latest blazium-cli."
+	if product == "hub" and _hub_includes_crash_reporter:
+		body += "\nThis Hub update includes the latest crash reporter."
 	_ensure_dialog()
 	_dialog.dialog_text = body
 	_dialog.dialog_autowrap = true
@@ -174,6 +191,13 @@ func _on_accepted() -> void:
 				_last_summary = HubCli.get_last_error()
 			else:
 				_last_summary = "blazium-cli updated to %s" % latest
+		"crash_reporter":
+			var r: Variant = await HubCli.update_apply_crash_reporter_async(install_root())
+			ok = r != null
+			if not ok:
+				_last_summary = HubCli.get_last_error()
+			else:
+				_last_summary = "Crash reporter updated to %s" % latest
 		"hub":
 			var r: Variant = await HubCli.update_apply_hub_async(hub_version(), install_root(), true)
 			ok = r != null

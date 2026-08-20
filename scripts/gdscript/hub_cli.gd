@@ -370,6 +370,22 @@ func update_apply_hub_async(current_version: String = "", install_root: String =
 	return await run_json_async(args)
 
 
+func update_apply_crash_reporter(install_root: String = "") -> Variant:
+	var args := PackedStringArray(["update", "apply", "--product", "crash_reporter"])
+	if not install_root.is_empty():
+		args.append("--install-root")
+		args.append(install_root)
+	return run_json(args)
+
+
+func update_apply_crash_reporter_async(install_root: String = "") -> Variant:
+	var args := PackedStringArray(["update", "apply", "--product", "crash_reporter"])
+	if not install_root.is_empty():
+		args.append("--install-root")
+		args.append(install_root)
+	return await run_json_async(args)
+
+
 func templates_download(version: String) -> Variant:
 	var args := PackedStringArray(["templates", "download", version, "--tpz"])
 	return run_json(args)
