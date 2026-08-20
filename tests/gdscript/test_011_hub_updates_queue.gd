@@ -5,6 +5,7 @@ func _products_hub_and_cli() -> Array:
 	return [
 		{"product": "hub", "update_available": true, "current_version": "0.1.0", "latest_version": "0.1.2", "error": ""},
 		{"product": "cli", "update_available": true, "current_version": "0.0.40", "latest_version": "0.0.41", "error": ""},
+		{"product": "crash_reporter", "update_available": true, "current_version": "0.1.0", "latest_version": "0.1.1", "error": ""},
 		{"product": "editor", "update_available": false, "error": ""},
 		{"product": "templates", "update_available": false, "error": ""},
 	]
@@ -42,14 +43,32 @@ func test_011_dismissed_hub_still_suppresses_cli() -> void:
 	var products := _products_hub_and_cli()
 	var dismissed := {"hub": true}
 	var queue: Array = HubUpdates.build_update_queue(products, dismissed)
-	assert_eq(queue.size(), 0, "no hub (dismissed) and no cli")
+	assert_eq(queue.size(), 0, "no hub (dismissed) and no cli/crash_reporter")
 	assert_true(HubUpdates.hub_update_outstanding(products), "hub still outstanding in catalog")
+
+
+func test_011_crash_reporter_only_when_hub_current() -> void:
+	var products: Array = [
+		{"product": "hub", "update_available": false, "error": ""},
+		{"product": "crash_reporter", "update_available": true, "current_version": "0.1.0", "latest_version": "0.1.1", "error": ""},
+	]
+	var names := _queue_names(HubUpdates.build_update_queue(products, {}))
+	assert_eq(names.size(), 1, "crash_reporter queued")
+	assert_eq(names[0], "crash_reporter", "crash_reporter alone")
+
+
+func test_011_crash_reporter_prompt_is_not_editor_copy() -> void:
+	var body := HubUpdates.prompt_body("crash_reporter", "0.1.1", "0.1.0")
+	assert_true(body.contains("Crash reporter"), "label")
+	assert_true(body.contains("0.1.1"), "latest")
+	assert_true(not body.contains("default editor"), "not editor wording")
 
 
 func test_011_editor_still_queued_with_hub() -> void:
 	var products: Array = [
 		{"product": "hub", "update_available": true, "latest_version": "0.2.0", "error": ""},
 		{"product": "cli", "update_available": true, "latest_version": "0.0.41", "error": ""},
+		{"product": "crash_reporter", "update_available": true, "latest_version": "0.1.1", "error": ""},
 		{"product": "editor", "update_available": true, "latest_version": "0.6.725", "error": ""},
 	]
 	var names := _queue_names(HubUpdates.build_update_queue(products, {}))
@@ -57,3 +76,4 @@ func test_011_editor_still_queued_with_hub() -> void:
 	assert_eq(names[0], "hub")
 	assert_eq(names[1], "editor")
 	assert_true(names.find("cli") < 0, "cli suppressed")
+	assert_true(names.find("crash_reporter") < 0, "crash_reporter suppressed")
