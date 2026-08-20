@@ -40,6 +40,7 @@ size_flags_vertical = 3
 [node name="ScrollContainer" type="ScrollContainer" parent="NewsListPanel"]
 layout_mode = 2
 size_flags_vertical = 3
+follow_focus = true
 
 [node name="NewsList" type="VBoxContainer" parent="NewsListPanel/ScrollContainer"]
 unique_name_in_owner = true

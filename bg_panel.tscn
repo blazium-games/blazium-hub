@@ -1,0 +1,39 @@
+[gd_scene load_steps=7 format=3 uid="uid://dp2d3navexcqp"]
+
+[sub_resource type="Gradient" id="Gradient_tefeu"]
+colors = PackedColorArray(0.262745, 0.160784, 0.407843, 1, 0.172549, 0.0823529, 0.215686, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_o6xl0"]
+gradient = SubResource("Gradient_tefeu")
+fill_from = Vector2(0, 1)
+fill_to = Vector2(0, 0)
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_tipki"]
+texture = SubResource("GradientTexture2D_o6xl0")
+
+[sub_resource type="Gradient" id="Gradient_o6xl0"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 0.478431)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_tipki"]
+frequency = 0.4717
+fractal_type = 0
+cellular_distance_function = 1
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_85g3d"]
+seamless = true
+color_ramp = SubResource("Gradient_o6xl0")
+noise = SubResource("FastNoiseLite_tipki")
+
+[node name="BgPanel" type="PanelContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxTexture_tipki")
+
+[node name="PanelMask" type="TextureRect" parent="."]
+mask_parent = 1
+texture_repeat = 2
+layout_mode = 2
+texture = SubResource("NoiseTexture2D_85g3d")
