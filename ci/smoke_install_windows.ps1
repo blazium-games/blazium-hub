@@ -42,9 +42,11 @@ if ($p.ExitCode -ne 0) {
 Write-Host "=== Assert custom-dir layout ==="
 $hub = Join-Path $CustomDir "Hub\BlaziumHub.exe"
 $cli = Join-Path $CustomDir "blazium-cli.exe"
+$crash = Join-Path $CustomDir "Hub\crash_reporter.exe"
 $shim = Join-Path $CustomDir "blazium.cmd"
 if (-not (Test-Path $hub)) { throw "missing $hub" }
 if (-not (Test-Path $cli)) { throw "missing $cli" }
+if (-not (Test-Path $crash)) { throw "missing $crash" }
 if (-not (Test-Path $shim)) { throw "missing $shim" }
 
 $blazium = [string](Get-MachineEnv "BLAZIUM")

@@ -26,7 +26,17 @@ def stamp_project_godot(path: Path, version: str) -> None:
     )
     if n != 1:
         raise SystemExit(f"{path}: config/version not found or ambiguous ({n})")
-    path.write_text(new, encoding="utf-8")
+    text = new
+    for key in ("crash_reporter/build_id", "crash_reporter/app_version"):
+        text, n = re.subn(
+            rf'(?m)^{re.escape(key)}="[^"]*"$',
+            f'{key}="{version}"',
+            text,
+            count=1,
+        )
+        if n != 1:
+            raise SystemExit(f"{path}: {key} not found or ambiguous ({n})")
+    path.write_text(text, encoding="utf-8")
 
 
 def stamp_export_presets(path: Path, file_version: str) -> None:
