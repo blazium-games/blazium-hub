@@ -19,6 +19,49 @@ local HubCli = {
 		return self.cli_path
 	end,
 
+	sidecar_filename_for = function(_self, os_name)
+		if os_name == "Windows" then
+			return "crash_reporter.exe"
+		end
+		return "crash_reporter"
+	end,
+
+	sidecar_filename = function(self)
+		return self:sidecar_filename_for(OS.get_name())
+	end,
+
+	sidecar_path_in = function(self, dir)
+		local base = tostring(dir or ""):gsub("^%s+", ""):gsub("%s+$", "")
+		if base == "" then
+			return ""
+		end
+		local p = base .. "/" .. self:sidecar_filename()
+		if FileAccess.file_exists(p) then
+			return p
+		end
+		return ""
+	end,
+
+	sidecar_path = function(self)
+		return self:sidecar_path_in(OS.get_executable_path():get_base_dir())
+	end,
+
+	crash_reporter_cli_args_for = function(self, dir)
+		local p = self:sidecar_path_in(dir)
+		if p == "" then
+			return {}
+		end
+		return { "--crash-reporter", p }
+	end,
+
+	_with_crash_reporter = function(self, args)
+		local extra = self:crash_reporter_cli_args_for(OS.get_executable_path():get_base_dir())
+		for _, v in ipairs(extra) do
+			table.insert(args, v)
+		end
+		return args
+	end,
+
 	get_last_error = function(self)
 		return self._last_error
 	end,
@@ -238,11 +281,11 @@ local HubCli = {
 	end,
 
 	open_project = function(self, path)
-		return self:run_json({ "open", path })
+		return self:run_json(self:_with_crash_reporter({ "open", path }))
 	end,
 
 	load_project = function(self, path)
-		return self:run_json({ "load", path })
+		return self:run_json(self:_with_crash_reporter({ "load", path }))
 	end,
 
 	upgrade_dry_run = function(self)
@@ -297,7 +340,7 @@ local HubCli = {
 	end,
 
 	handle_uri = function(self, uri)
-		return self:run_json({ "handle-uri", uri })
+		return self:run_json(self:_with_crash_reporter({ "handle-uri", uri }))
 	end,
 }
 

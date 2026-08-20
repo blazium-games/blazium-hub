@@ -34,6 +34,46 @@ func get_cli_path() -> String:
 	return cli_path
 
 
+func sidecar_filename_for(os_name: String) -> String:
+	if os_name == "Windows":
+		return "crash_reporter.exe"
+	return "crash_reporter"
+
+
+func sidecar_filename() -> String:
+	return sidecar_filename_for(OS.get_name())
+
+
+func sidecar_path_in(dir: String) -> String:
+	var base := dir.strip_edges()
+	if base.is_empty():
+		return ""
+	var p := base.path_join(sidecar_filename())
+	if FileAccess.file_exists(p):
+		return p
+	return ""
+
+
+func sidecar_path() -> String:
+	return sidecar_path_in(OS.get_executable_path().get_base_dir())
+
+
+func crash_reporter_cli_args_for(dir: String) -> PackedStringArray:
+	var p := sidecar_path_in(dir)
+	if p.is_empty():
+		return PackedStringArray()
+	return PackedStringArray(["--crash-reporter", p])
+
+
+func crash_reporter_cli_args() -> PackedStringArray:
+	return crash_reporter_cli_args_for(OS.get_executable_path().get_base_dir())
+
+
+func _with_crash_reporter(args: PackedStringArray) -> PackedStringArray:
+	args.append_array(crash_reporter_cli_args())
+	return args
+
+
 func list_cli_candidates() -> PackedStringArray:
 	## Ordered probes: BLAZIUM install root, then common paths, then bare PATH names last.
 	var candidates: PackedStringArray = []
@@ -310,15 +350,15 @@ func projects_remove_async(path: String) -> Variant:
 
 
 func open_project(path: String) -> Variant:
-	return run_json(PackedStringArray(["open", path]))
+	return run_json(_with_crash_reporter(PackedStringArray(["open", path])))
 
 
 func open_project_async(path: String) -> Variant:
-	return await run_json_async(PackedStringArray(["open", path]))
+	return await run_json_async(_with_crash_reporter(PackedStringArray(["open", path])))
 
 
 func load_project(path: String) -> Variant:
-	return run_json(PackedStringArray(["load", path]))
+	return run_json(_with_crash_reporter(PackedStringArray(["load", path])))
 
 
 func upgrade_dry_run() -> Variant:
@@ -396,4 +436,4 @@ func templates_download_async(version: String) -> Variant:
 
 
 func handle_uri(uri: String) -> Variant:
-	return run_json(PackedStringArray(["handle-uri", uri]))
+	return run_json(_with_crash_reporter(PackedStringArray(["handle-uri", uri])))
