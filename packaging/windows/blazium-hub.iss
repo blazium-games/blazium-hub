@@ -1,6 +1,6 @@
 ; Blazium Hub — Inno Setup
 ; Install root: {app} (= machine BLAZIUM). Default {autopf}\Blazium; any path via /DIR=.
-; Bundles Hub + blazium-cli + PATH shims (blazium.cmd → CLI).
+; Bundles Hub + blazium-cli + crash_reporter + PATH shims (blazium.cmd → CLI).
 ;
 ; Admin / machine-wide only (PrivilegesRequired=admin). Do not set
 ; PrivilegesRequiredOverridesAllowed — /CURRENTUSER must not downgrade to a
@@ -77,6 +77,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 ; that Excludes the exe would match zero files and abort the compile.
 Source: "{#MyAppSourceDir}\Hub\*"; DestDir: "{app}\Hub"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#MyAppSourceDir}\blazium-cli.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppSourceDir}\Hub\crash_reporter.exe"; DestDir: "{app}\Hub"; Flags: ignoreversion
 Source: "{#MyAppSourceDir}\blazium.cmd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppSourceDir}\blazium-hub.cmd"; DestDir: "{app}"; Flags: ignoreversion
 

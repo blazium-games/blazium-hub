@@ -258,7 +258,7 @@ jobs:
             FORCE="-force-${{ github.run_id }}"
           fi
           # -pearch2: bust caches from VCVARS path linking x86_32 without /MACHINE:X86 (x64 PE).
-          KEY="hub-engine-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.target }}-${{ needs.resolve-engine.outputs.blazium_ref }}-${{ hashFiles('ci/hub_scons.env') }}-${ENC}-pearch2${FORCE}"
+          KEY="hub-engine-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.target }}-${{ needs.resolve-engine.outputs.blazium_ref }}-${{ needs.resolve-engine.outputs.version }}-${{ hashFiles('ci/hub_scons.env') }}-${ENC}-pearch2-id1${FORCE}"
           echo "key=$KEY" >> "$GITHUB_OUTPUT"
           echo "Binary cache key: $KEY"
 
@@ -362,8 +362,10 @@ jobs:
           set +a
           mkdir -p .ci/flags
           printf '%s' "$HUB_SCONS_COMMON" > .ci/flags/common.txt
-          printf '%s' "$HUB_SCONS_TEMPLATE" > .ci/flags/template.txt
+          printf '%s' "$HUB_SCONS_EDITOR editor_build_id=${{ needs.resolve-engine.outputs.blazium_ref }}" > .ci/flags/editor.txt
+          printf '%s' "$HUB_SCONS_TEMPLATE template_build_id=${{ needs.resolve-engine.outputs.version }}" > .ci/flags/template.txt
           echo "COMMON: $(cat .ci/flags/common.txt)"
+          echo "EDITOR EXTRA: $(cat .ci/flags/editor.txt)"
           echo "TEMPLATE EXTRA: $(cat .ci/flags/template.txt)"
 
       - name: Materialize encryption key for templates
@@ -416,6 +418,7 @@ jobs:
             EXTRA="$(cat ../flags/template.txt)"
           else
             unset SCRIPT_AES256_ENCRYPTION_KEY || true
+            EXTRA="$(cat ../flags/editor.txt)"
           fi
           # Blazium setup_msvc_manual (VCVARS path) never sets SCons TARGET_ARCH, so MSVC
           # link.exe defaults to x64 PE even when cl.exe is HostX86\x86. Force /MACHINE:X86.
@@ -557,7 +560,12 @@ jobs:
         run: |
           set -euo pipefail
           python3 ci/stamp_hub_version.py "${{ needs.resolve-engine.outputs.version }}"
+          python3 ci/fetch_latest_crash_reporter.py \
+            --platform linux \
+            --arch "${{ matrix.arch }}" \
+            --stamp-project project.godot
           grep -E '^config/version=' project.godot
+          grep -E '^crash_reporter/(build_id|app_version|endpoint|upload_mode|reporter_sha256)=' project.godot
           grep -E '^application/(file|product)_version=' export_presets.cfg | head -n4
 
       - name: Patch export_presets custom template
@@ -600,7 +608,7 @@ jobs:
           echo "### Hub Linux ${ARCH}" >> "$GITHUB_STEP_SUMMARY"
           du -h "$OUT" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Fetch matching-arch blazium-cli + stage package tree
+      - name: Fetch matching-arch blazium-cli + crash_reporter + stage package tree
         run: |
           set -euo pipefail
           mkdir -p build/package/linux/bin
@@ -608,8 +616,12 @@ jobs:
             --platform linux \
             --arch "${{ matrix.arch }}" \
             --out build/package/linux/bin/blazium-cli
+          python3 ci/fetch_latest_crash_reporter.py \
+            --platform linux \
+            --arch "${{ matrix.arch }}" \
+            --out build/package/linux/bin/crash_reporter
           cp "$HUB_BIN" build/package/linux/bin/blazium-hub
-          chmod +x build/package/linux/bin/blazium-hub build/package/linux/bin/blazium-cli
+          chmod +x build/package/linux/bin/blazium-hub build/package/linux/bin/blazium-cli build/package/linux/bin/crash_reporter
           printf '%s\n' '#!/bin/sh' 'exec "$(dirname "$0")/blazium-cli" "$@"' > build/package/linux/bin/blazium
           chmod +x build/package/linux/bin/blazium
           ls -lh build/package/linux/bin/
@@ -784,7 +796,12 @@ jobs:
         run: |
           set -euo pipefail
           python ci/stamp_hub_version.py "${{ needs.resolve-engine.outputs.version }}"
+          python ci/fetch_latest_crash_reporter.py \
+            --platform windows \
+            --arch "${{ matrix.arch }}" \
+            --stamp-project project.godot
           grep -E '^config/version=' project.godot
+          grep -E '^crash_reporter/(build_id|app_version|endpoint|upload_mode|reporter_sha256)=' project.godot
           grep -E '^application/(file|product)_version=' export_presets.cfg | head -n4
 
       - name: Patch export_presets custom template
@@ -829,7 +846,7 @@ jobs:
           echo "### Hub Windows ${ARCH}" >> "$GITHUB_STEP_SUMMARY"
           ls -lh "$OUT" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Fetch matching-arch blazium-cli + stage package tree
+      - name: Fetch matching-arch blazium-cli + crash_reporter + stage package tree
         shell: bash
         run: |
           set -euo pipefail
@@ -839,6 +856,10 @@ jobs:
             --platform windows \
             --arch "${{ matrix.arch }}" \
             --out build/package/windows/blazium-cli.exe
+          python ci/fetch_latest_crash_reporter.py \
+            --platform windows \
+            --arch "${{ matrix.arch }}" \
+            --out build/package/windows/Hub/crash_reporter.exe
           cp packaging/windows/blazium.cmd build/package/windows/blazium.cmd
           cp packaging/windows/blazium-hub.cmd build/package/windows/blazium-hub.cmd
           ls -lh build/package/windows/ build/package/windows/Hub/
@@ -873,7 +894,8 @@ jobs:
           set -euo pipefail
           test -f build/package/windows/Hub/BlaziumHub.exe
           test -f build/package/windows/blazium-cli.exe
-          mkdir -p signed/Hub signed/cli
+          test -f build/package/windows/Hub/crash_reporter.exe
+          mkdir -p signed/Hub signed/cli signed/crash_reporter
           ls -lh build/package/windows/ build/package/windows/Hub/
 
       - uses: bioblaze/sslcom-code-signer@v5
@@ -900,15 +922,30 @@ jobs:
           output_path: ./signed/cli
           environment_name: PROD
 
+      - uses: bioblaze/sslcom-code-signer@v5
+        name: Sign crash_reporter.exe
+        with:
+          command: sign
+          username: ${{ secrets.ES_USERNAME }}
+          password: ${{ secrets.ES_PASSWORD }}
+          credential_id: ${{ secrets.CREDENTIAL_ID }}
+          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
+          file_path: ./build/package/windows/Hub/crash_reporter.exe
+          output_path: ./signed/crash_reporter
+          environment_name: PROD
+
       - name: Replace package tree with signed binaries
         run: |
           set -euo pipefail
           test -f signed/Hub/BlaziumHub.exe
           test -f signed/cli/blazium-cli.exe
+          test -f signed/crash_reporter/crash_reporter.exe
           cp -f signed/Hub/BlaziumHub.exe build/package/windows/Hub/BlaziumHub.exe
           cp -f signed/cli/blazium-cli.exe build/package/windows/blazium-cli.exe
+          cp -f signed/crash_reporter/crash_reporter.exe build/package/windows/Hub/crash_reporter.exe
           test "$(stat -c%s build/package/windows/Hub/BlaziumHub.exe)" -ge 1048576
           test "$(stat -c%s build/package/windows/blazium-cli.exe)" -ge 1048576
+          test "$(stat -c%s build/package/windows/Hub/crash_reporter.exe)" -ge 1048576
           ls -lh build/package/windows/ build/package/windows/Hub/
 
       - uses: actions/upload-artifact@v4
@@ -947,6 +984,7 @@ jobs:
           $arch = "${{ matrix.arch }}"
           if (-not (Test-Path "build\package\windows\Hub\BlaziumHub.exe")) { throw "Missing signed Hub exe" }
           if (-not (Test-Path "build\package\windows\blazium-cli.exe")) { throw "Missing signed CLI exe" }
+          if (-not (Test-Path "build\package\windows\Hub\crash_reporter.exe")) { throw "Missing signed crash_reporter exe" }
           $src = (Resolve-Path "build\package\windows").Path
           $ico = "packaging\windows\blazium-hub.ico"
           $magickExe = $null
@@ -1189,7 +1227,7 @@ jobs:
           test "${#FILES[@]}" -ge 4
           NOTES="Blazium Hub ${VER}
 
-          Installers (Linux/Windows × x86_64/x86_32), each bundling matching-arch blazium-cli.
+          Installers (Linux/Windows × x86_64/x86_32), each bundling matching-arch blazium-cli and crash_reporter.
 
           | Platform | Arch | Artifact |
           |----------|------|----------|

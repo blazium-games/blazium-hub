@@ -12,6 +12,7 @@ echo "=== Assert package contents ==="
 LIST="$(dpkg-deb -c "$DEB")"
 echo "$LIST" | grep -q 'opt/blazium/bin/blazium-hub'
 echo "$LIST" | grep -q 'opt/blazium/bin/blazium-cli'
+echo "$LIST" | grep -q 'opt/blazium/bin/crash_reporter'
 echo "$LIST" | grep -q 'opt/blazium/bin/blazium'
 echo "$LIST" | grep -q 'etc/profile.d/blazium.sh'
 

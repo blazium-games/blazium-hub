@@ -11,6 +11,7 @@ sudo dpkg -i "$DEB" || sudo apt-get install -f -y
 echo "=== Assert install layout ==="
 test -x /opt/blazium/bin/blazium-hub
 test -x /opt/blazium/bin/blazium-cli
+test -x /opt/blazium/bin/crash_reporter
 test -e /opt/blazium/bin/blazium
 test -L /usr/bin/blazium-hub || test -e /usr/bin/blazium-hub
 test -L /usr/bin/blazium-cli || test -e /usr/bin/blazium-cli

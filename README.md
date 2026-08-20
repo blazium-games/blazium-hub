@@ -58,8 +58,9 @@ When editing Hub in a full Blazium editor, import [`config/hub_low_end.profile`]
 
 **CI builds a custom Blazium editor + `template_release`** from `blazium-games/blazium` at the pin in [`ci/BLAZIUM_REF`](ci/BLAZIUM_REF), using the allowlist in [`ci/hub_scons.env`](ci/hub_scons.env):
 
-- `modules_enabled_by_default=no` + GDScript, freetype, text_server_fb, svg, mbedtls, regex, **httpserver**, **remote_control**
-- Templates: `disable_3d=yes`, `hub_build=yes`, `vulkan=no`, `openxr=no`, `d3d12=no`, `optimize=size`, `lto=full`
+- `modules_enabled_by_default=no` + GDScript, freetype, text_server_fb, svg, mbedtls, regex, **httpserver**, **remote_control**, **crash_reporter**, **analytics**
+- Export-tool editor: baked `editor_app_id=blazium-hub` (do not pass `--app-id` / `--build-id` to the engine)
+- Templates: `disable_3d=yes`, `hub_build=yes`, locked `template_app_id=blazium-hub` plus official crash/analytics URLs, `vulkan=no`, `openxr=no`, `d3d12=no`, `optimize=size`, `lto=full`
 - **No** `template_debug`, tests, Mono, Luau, or JustAMCP in the shipped binary
 - Runners: **`ubuntu-22.04`** and **`windows-2022`** (oldest supported GitHub-hosted images)
 

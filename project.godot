@@ -21,6 +21,18 @@ boot_splash/fullsize=false
 boot_splash/use_filter=false
 config/icon="res://assets/icons/icon.svg"
 config/windows_native_icon="res://assets/icons/icon.svg"
+crash_reporter/enabled=true
+crash_reporter/app_id="blazium-hub"
+crash_reporter/app_name="Blazium Hub"
+crash_reporter/app_version="0.1.0"
+crash_reporter/build_id="0.1.0"
+crash_reporter/build_channel="release"
+crash_reporter/reporter_filename="crash_reporter"
+crash_reporter/reporter_filename.windows="crash_reporter.exe"
+crash_reporter/reporter_path=""
+crash_reporter/reporter_sha256=""
+crash_reporter/upload_mode=2
+crash_reporter/endpoint="https://crash.blazium.app/v1/reports"
 
 [autoload]
 
