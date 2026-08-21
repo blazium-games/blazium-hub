@@ -32,14 +32,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download Blazium editor (release, with Autowork + Luau)
+      - name: Test nightly resolver
+        working-directory: ci
+        run: python3 -m unittest test_resolve_nightly_engine.py -v
+
+      - name: Download Blazium editor (nightly, with Autowork + Luau)
         id: editor
         run: |
           set -euo pipefail
-          LATEST="$(curl -fsSL https://cdn.blazium.app/catalog/versions/release/latest.json)"
+          LATEST="$(curl -fsSL https://cdn.blazium.app/catalog/versions/nightly/latest.json)"
           VER="$(printf '%s' "$LATEST" | python3 -c 'import json,sys; print(json.load(sys.stdin)["version"])')"
           echo "version=$VER" >> "$GITHUB_OUTPUT"
-          EDITORS_URL="https://cdn.blazium.app/release/${VER}/editors.json"
+          EDITORS_URL="https://cdn.blazium.app/nightly/${VER}/editors.json"
           ZIP_URL="$(curl -fsSL "$EDITORS_URL" | python3 -c '
           import json,sys
           for e in json.load(sys.stdin):
@@ -164,12 +168,11 @@ jobs:
           # Workspace only; local-dev VERSION in git stays as a default.
           printf '%s\n' "$V" > VERSION
 
-      - name: Read BLAZIUM_REF
+      - name: Resolve newest nightly engine
         id: ref
         run: |
-          REF="$(tr -d '[:space:]' < ci/BLAZIUM_REF)"
-          echo "ref=$REF" >> "$GITHUB_OUTPUT"
-          echo "Engine pin: $REF"
+          set -euo pipefail
+          python3 ci/resolve_nightly_engine.py --fallback ci/BLAZIUM_REF
 
       - name: Encryption key fingerprint
         id: enc
