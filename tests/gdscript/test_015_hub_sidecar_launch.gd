@@ -7,6 +7,11 @@ func test_015_sidecar_filename_for_os() -> void:
 	assert_eq(HubCli.sidecar_filename_for("macOS"), "crash_reporter", "macos name")
 
 
+func test_015_project_does_not_require_reporter_sha() -> void:
+	var sha := String(ProjectSettings.get_setting("crash_reporter/reporter_sha256", ""))
+	assert_eq(sha, "", "sha left empty so the sidecar can update independently")
+
+
 func test_015_sidecar_path_missing_is_empty() -> void:
 	assert_eq(HubCli.sidecar_path_in(""), "", "empty dir")
 	assert_eq(HubCli.sidecar_path_in("C:/no-such-hub-sidecar-dir-xyz"), "", "missing dir")
