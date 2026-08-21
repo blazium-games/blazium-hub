@@ -35,6 +35,7 @@ func get_cli_path() -> String:
 
 
 func sidecar_filename_for(os_name: String) -> String:
+	# Filename only: Hub never stamps or verifies a sidecar SHA, so the reporter can update independently.
 	if os_name == "Windows":
 		return "crash_reporter.exe"
 	return "crash_reporter"

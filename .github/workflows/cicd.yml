@@ -560,12 +560,8 @@ jobs:
         run: |
           set -euo pipefail
           python3 ci/stamp_hub_version.py "${{ needs.resolve-engine.outputs.version }}"
-          python3 ci/fetch_latest_crash_reporter.py \
-            --platform linux \
-            --arch "${{ matrix.arch }}" \
-            --stamp-project project.godot
           grep -E '^config/version=' project.godot
-          grep -E '^crash_reporter/(build_id|app_version|endpoint|upload_mode|reporter_sha256)=' project.godot
+          grep -E '^crash_reporter/(build_id|app_version|endpoint|upload_mode)=' project.godot
           grep -E '^application/(file|product)_version=' export_presets.cfg | head -n4
 
       - name: Patch export_presets custom template
@@ -796,12 +792,8 @@ jobs:
         run: |
           set -euo pipefail
           python ci/stamp_hub_version.py "${{ needs.resolve-engine.outputs.version }}"
-          python ci/fetch_latest_crash_reporter.py \
-            --platform windows \
-            --arch "${{ matrix.arch }}" \
-            --stamp-project project.godot
           grep -E '^config/version=' project.godot
-          grep -E '^crash_reporter/(build_id|app_version|endpoint|upload_mode|reporter_sha256)=' project.godot
+          grep -E '^crash_reporter/(build_id|app_version|endpoint|upload_mode)=' project.godot
           grep -E '^application/(file|product)_version=' export_presets.cfg | head -n4
 
       - name: Patch export_presets custom template
