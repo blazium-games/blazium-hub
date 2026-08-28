@@ -39,6 +39,8 @@ func test_010_hub_cli_luau() -> void:
 	add_child_autofree(node)
 	assert_true(node.has_method("set_cli_path"), "set_cli_path")
 	assert_true(node.has_method("resolve_cli"), "resolve_cli")
+	assert_true(node.has_method("list_cli_candidates"), "list_cli_candidates")
+	assert_true(node.has_method("install_root_from_exe"), "install_root_from_exe")
 	assert_true(node.has_method("handle_uri"), "handle_uri")
 	assert_true(node.has_method("editors"), "editors")
 	node.call("set_cli_path", "C:/fake/blazium-cli.exe")

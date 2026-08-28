@@ -75,33 +75,62 @@ func _with_crash_reporter(args: PackedStringArray) -> PackedStringArray:
 	return args
 
 
+func install_root_from_exe() -> String:
+	## Same walk as HubUpdates.install_root() without requiring BLAZIUM.
+	var exe := OS.get_executable_path().strip_edges()
+	if exe.is_empty():
+		return ""
+	var base := exe.get_base_dir()
+	var leaf := base.get_file().to_lower()
+	if leaf == "hub" or leaf == "bin":
+		return base.get_base_dir()
+	return base
+
+
+func _append_unique_path(candidates: PackedStringArray, path: String) -> PackedStringArray:
+	var p := path.strip_edges()
+	if p.is_empty():
+		return candidates
+	for existing in candidates:
+		if existing == p:
+			return candidates
+	candidates.append(p)
+	return candidates
+
+
+func _append_cli_from_root(candidates: PackedStringArray, root: String, is_win: bool) -> PackedStringArray:
+	var r := root.strip_edges()
+	if r.is_empty():
+		return candidates
+	if is_win:
+		candidates = _append_unique_path(candidates, r.path_join("blazium-cli.exe"))
+		candidates = _append_unique_path(candidates, r.path_join("bin").path_join("blazium-cli.exe"))
+	else:
+		candidates = _append_unique_path(candidates, r.path_join("bin").path_join("blazium-cli"))
+		candidates = _append_unique_path(candidates, r.path_join("blazium-cli"))
+	return candidates
+
+
 func list_cli_candidates() -> PackedStringArray:
-	## Ordered probes: BLAZIUM install root, then common paths, then bare PATH names last.
+	## BLAZIUM, exe-derived install root, exe dir, common paths, then bare PATH names.
 	var candidates: PackedStringArray = []
-	var root := OS.get_environment("BLAZIUM").strip_edges()
 	var is_win := OS.get_name() == "Windows"
-	if not root.is_empty():
-		if is_win:
-			candidates.append(root.path_join("blazium-cli.exe"))
-			candidates.append(root.path_join("bin").path_join("blazium-cli.exe"))
-		else:
-			candidates.append(root.path_join("bin").path_join("blazium-cli"))
-			candidates.append(root.path_join("blazium-cli"))
+	candidates = _append_cli_from_root(candidates, OS.get_environment("BLAZIUM"), is_win)
+	candidates = _append_cli_from_root(candidates, install_root_from_exe(), is_win)
+	var exe_dir := OS.get_executable_path().get_base_dir()
 	if is_win:
-		var localapp := OS.get_environment("LOCALAPPDATA")
-		var prog := OS.get_environment("ProgramFiles")
-		candidates.append(prog.path_join("Blazium").path_join("blazium-cli.exe"))
-		candidates.append(localapp.path_join("Blazium").path_join("blazium-cli.exe"))
+		candidates = _append_unique_path(candidates, exe_dir.path_join("blazium-cli.exe"))
+		candidates = _append_unique_path(candidates, OS.get_environment("ProgramFiles").path_join("Blazium").path_join("blazium-cli.exe"))
+		candidates = _append_unique_path(candidates, OS.get_environment("LOCALAPPDATA").path_join("Blazium").path_join("blazium-cli.exe"))
+		candidates = _append_unique_path(candidates, "blazium-cli.exe")
+		candidates = _append_unique_path(candidates, "blazium-cli")
 	else:
-		candidates.append("/opt/blazium/bin/blazium-cli")
-		candidates.append("/usr/local/bin/blazium-cli")
-		candidates.append("/usr/bin/blazium-cli")
-		candidates.append(OS.get_environment("HOME").path_join(".local/bin/blazium-cli"))
-	if is_win:
-		candidates.append("blazium-cli.exe")
-		candidates.append("blazium-cli")
-	else:
-		candidates.append("blazium-cli")
+		candidates = _append_unique_path(candidates, exe_dir.path_join("blazium-cli"))
+		candidates = _append_unique_path(candidates, "/opt/blazium/bin/blazium-cli")
+		candidates = _append_unique_path(candidates, "/usr/local/bin/blazium-cli")
+		candidates = _append_unique_path(candidates, "/usr/bin/blazium-cli")
+		candidates = _append_unique_path(candidates, OS.get_environment("HOME").path_join(".local/bin/blazium-cli"))
+		candidates = _append_unique_path(candidates, "blazium-cli")
 	return candidates
 
 

@@ -66,33 +66,69 @@ local HubCli = {
 		return self._last_error
 	end,
 
-	list_cli_candidates = function(_self)
-		local candidates = {}
-		local root = tostring(OS.get_environment("BLAZIUM") or ""):gsub("^%s+", ""):gsub("%s+$", "")
-		local os_name = OS.get_name()
-		local is_win = os_name == "Windows"
-		if root ~= "" then
-			if is_win then
-				table.insert(candidates, root .. "\\blazium-cli.exe")
-				table.insert(candidates, root .. "\\bin\\blazium-cli.exe")
-			else
-				table.insert(candidates, root .. "/bin/blazium-cli")
-				table.insert(candidates, root .. "/blazium-cli")
+	_trim = function(_self, s)
+		return tostring(s or ""):gsub("^%s+", ""):gsub("%s+$", "")
+	end,
+
+	_append_unique_path = function(_self, candidates, path)
+		local p = tostring(path or ""):gsub("^%s+", ""):gsub("%s+$", "")
+		if p == "" then
+			return
+		end
+		for _, existing in ipairs(candidates) do
+			if existing == p then
+				return
 			end
 		end
+		table.insert(candidates, p)
+	end,
+
+	install_root_from_exe = function(self)
+		local exe = self:_trim(OS.get_executable_path())
+		if exe == "" then
+			return ""
+		end
+		local base = exe:get_base_dir()
+		local leaf = string.lower(base:get_file())
+		if leaf == "hub" or leaf == "bin" then
+			return base:get_base_dir()
+		end
+		return base
+	end,
+
+	_append_cli_from_root = function(self, candidates, root, is_win)
+		local r = self:_trim(root)
+		if r == "" then
+			return
+		end
 		if is_win then
-			local localapp = OS.get_environment("LOCALAPPDATA")
-			local prog = OS.get_environment("ProgramFiles")
-			table.insert(candidates, prog .. "\\Blazium\\blazium-cli.exe")
-			table.insert(candidates, localapp .. "\\Blazium\\blazium-cli.exe")
-			table.insert(candidates, "blazium-cli.exe")
-			table.insert(candidates, "blazium-cli")
+			self:_append_unique_path(candidates, r .. "\\blazium-cli.exe")
+			self:_append_unique_path(candidates, r .. "\\bin\\blazium-cli.exe")
 		else
-			table.insert(candidates, "/opt/blazium/bin/blazium-cli")
-			table.insert(candidates, "/usr/local/bin/blazium-cli")
-			table.insert(candidates, "/usr/bin/blazium-cli")
-			table.insert(candidates, OS.get_environment("HOME") .. "/.local/bin/blazium-cli")
-			table.insert(candidates, "blazium-cli")
+			self:_append_unique_path(candidates, r .. "/bin/blazium-cli")
+			self:_append_unique_path(candidates, r .. "/blazium-cli")
+		end
+	end,
+
+	list_cli_candidates = function(self)
+		local candidates = {}
+		local is_win = OS.get_name() == "Windows"
+		self:_append_cli_from_root(candidates, OS.get_environment("BLAZIUM"), is_win)
+		self:_append_cli_from_root(candidates, self:install_root_from_exe(), is_win)
+		local exe_dir = OS.get_executable_path():get_base_dir()
+		if is_win then
+			self:_append_unique_path(candidates, exe_dir .. "\\blazium-cli.exe")
+			self:_append_unique_path(candidates, OS.get_environment("ProgramFiles") .. "\\Blazium\\blazium-cli.exe")
+			self:_append_unique_path(candidates, OS.get_environment("LOCALAPPDATA") .. "\\Blazium\\blazium-cli.exe")
+			self:_append_unique_path(candidates, "blazium-cli.exe")
+			self:_append_unique_path(candidates, "blazium-cli")
+		else
+			self:_append_unique_path(candidates, exe_dir .. "/blazium-cli")
+			self:_append_unique_path(candidates, "/opt/blazium/bin/blazium-cli")
+			self:_append_unique_path(candidates, "/usr/local/bin/blazium-cli")
+			self:_append_unique_path(candidates, "/usr/bin/blazium-cli")
+			self:_append_unique_path(candidates, OS.get_environment("HOME") .. "/.local/bin/blazium-cli")
+			self:_append_unique_path(candidates, "blazium-cli")
 		end
 		return candidates
 	end,

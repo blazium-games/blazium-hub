@@ -19,6 +19,34 @@ func test_007_list_cli_candidates_includes_blazium_env() -> void:
 	OS.set_environment("BLAZIUM", prev)
 
 
+func test_007_list_cli_candidates_includes_exe_relative() -> void:
+	var exe_dir := OS.get_executable_path().get_base_dir()
+	var derived := HubCli.install_root_from_exe()
+	var candidates: PackedStringArray = HubCli.list_cli_candidates()
+	assert_true(candidates.size() >= 2, "has candidates")
+	var joined := "\n".join(candidates)
+	if OS.get_name() == "Windows":
+		var sibling := exe_dir.path_join("blazium-cli.exe")
+		assert_true(joined.contains(sibling), "exe-dir sibling probed: %s" % sibling)
+		if not derived.is_empty():
+			assert_true(
+				joined.contains(derived.path_join("blazium-cli.exe")),
+				"exe-derived install root probed: %s" % derived
+			)
+	else:
+		var sibling := exe_dir.path_join("blazium-cli")
+		assert_true(joined.contains(sibling), "exe-dir sibling probed: %s" % sibling)
+		if not derived.is_empty():
+			var from_root := derived.path_join("bin").path_join("blazium-cli")
+			var from_root_flat := derived.path_join("blazium-cli")
+			assert_true(
+				joined.contains(from_root) or joined.contains(from_root_flat),
+				"exe-derived install root probed: %s" % derived
+			)
+	var last: String = candidates[candidates.size() - 1]
+	assert_true(last == "blazium-cli" or last == "blazium-cli.exe", "bare PATH name last")
+
+
 func test_007_packaging_shims_exist() -> void:
 	assert_true(FileAccess.file_exists("res://packaging/windows/blazium.cmd"), "blazium.cmd")
 	assert_true(FileAccess.file_exists("res://packaging/windows/blazium-hub.cmd"), "blazium-hub.cmd")
