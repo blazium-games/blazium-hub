@@ -15,6 +15,8 @@
 ;   BlaziumHub-Setup-VERSION-x86_64.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="D:\Tools\Blazium"
 ; Silent install and auto-launch Hub:
 ;   ... /DIR="D:\Tools\Blazium" /LAUNCH
+; Silent install and download the GPLv3 toolchain manager via bundled CLI:
+;   ... /INSTALLTOOLCHAIN
 
 #define MyAppName "Blazium Hub"
 #ifndef MyAppVersion
@@ -80,6 +82,9 @@ Source: "{#MyAppSourceDir}\blazium-cli.exe"; DestDir: "{app}"; Flags: ignorevers
 Source: "{#MyAppSourceDir}\Hub\crash_reporter.exe"; DestDir: "{app}\Hub"; Flags: ignoreversion
 Source: "{#MyAppSourceDir}\blazium.cmd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppSourceDir}\blazium-hub.cmd"; DestDir: "{app}"; Flags: ignoreversion
+; Wizard-only texts (extracted in InitializeWizard; not installed).
+Source: "toolchain-LICENSE.txt"; Flags: dontcopy
+Source: "toolchain-features.txt"; Flags: dontcopy
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\Hub\{#MyAppExeName}"
@@ -112,6 +117,13 @@ const
 var
   GIsUpgrade: Boolean;
   GPreviousVersion: string;
+  ToolchainPage: TWizardPage;
+  ToolchainCheck: TNewCheckBox;
+  ToolchainInfo: TNewMemo;
+  ToolchainLicensePage: TWizardPage;
+  ToolchainLicenseMemo: TNewMemo;
+  ToolchainAccept: TNewRadioButton;
+  ToolchainDecline: TNewRadioButton;
 
 function UninstallRegKey: string;
 begin
@@ -138,6 +150,121 @@ end;
 function ShouldLaunchAfterSilent: Boolean;
 begin
   Result := CmdLineParamExists('/LAUNCH');
+end;
+
+function LoadDontCopyText(const Name: string): string;
+var
+  Data: AnsiString;
+begin
+  Result := '';
+  ExtractTemporaryFile(Name);
+  if LoadStringFromFile(ExpandConstant('{tmp}\') + Name, Data) then
+    Result := string(Data);
+end;
+
+function WantToolchain: Boolean;
+begin
+  if WizardSilent then
+  begin
+    Result := CmdLineParamExists('/INSTALLTOOLCHAIN');
+    Exit;
+  end;
+  Result := False;
+  if ToolchainCheck <> nil then
+    Result := ToolchainCheck.Checked;
+  if Result and (ToolchainAccept <> nil) then
+    Result := ToolchainAccept.Checked;
+end;
+
+procedure InitializeWizard;
+var
+  Features, LicenseText: string;
+  RadioTop: Integer;
+begin
+  ToolchainPage := CreateCustomPage(wpLicense,
+    'Blazium Toolchain (optional)',
+    'Optionally download the GPLv3 console toolchain manager after Hub is installed.');
+
+  ToolchainCheck := TNewCheckBox.Create(ToolchainPage);
+  ToolchainCheck.Parent := ToolchainPage.Surface;
+  ToolchainCheck.Top := ScaleY(0);
+  ToolchainCheck.Left := ScaleX(0);
+  ToolchainCheck.Width := ToolchainPage.SurfaceWidth;
+  ToolchainCheck.Height := ScaleY(22);
+  ToolchainCheck.Caption := 'Download Blazium Toolchain after setup (GPLv3)';
+  ToolchainCheck.Checked := CmdLineParamExists('/INSTALLTOOLCHAIN');
+
+  ToolchainInfo := TNewMemo.Create(ToolchainPage);
+  ToolchainInfo.Parent := ToolchainPage.Surface;
+  ToolchainInfo.Top := ToolchainCheck.Top + ToolchainCheck.Height + ScaleY(8);
+  ToolchainInfo.Left := 0;
+  ToolchainInfo.Width := ToolchainPage.SurfaceWidth;
+  ToolchainInfo.Height := ToolchainPage.SurfaceHeight - ToolchainInfo.Top;
+  ToolchainInfo.ReadOnly := True;
+  ToolchainInfo.ScrollBars := ssVertical;
+  Features := LoadDontCopyText('toolchain-features.txt');
+  if Features = '' then
+    Features := 'Blazium Toolchain manager (GPL-3.0-or-later). Compilers stay in the user cache.';
+  ToolchainInfo.Text := Features;
+
+  ToolchainLicensePage := CreateCustomPage(ToolchainPage.ID,
+    'Toolchain License Agreement',
+    'Please review the GNU GPL before installing the toolchain.');
+
+  RadioTop := ToolchainLicensePage.SurfaceHeight - ScaleY(44);
+  ToolchainLicenseMemo := TNewMemo.Create(ToolchainLicensePage);
+  ToolchainLicenseMemo.Parent := ToolchainLicensePage.Surface;
+  ToolchainLicenseMemo.Top := 0;
+  ToolchainLicenseMemo.Left := 0;
+  ToolchainLicenseMemo.Width := ToolchainLicensePage.SurfaceWidth;
+  ToolchainLicenseMemo.Height := RadioTop - ScaleY(8);
+  ToolchainLicenseMemo.ReadOnly := True;
+  ToolchainLicenseMemo.ScrollBars := ssVertical;
+  LicenseText := LoadDontCopyText('toolchain-LICENSE.txt');
+  if LicenseText = '' then
+    LicenseText := 'GNU General Public License version 3 or later. See https://www.gnu.org/licenses/gpl-3.0.html';
+  ToolchainLicenseMemo.Text := LicenseText;
+
+  ToolchainAccept := TNewRadioButton.Create(ToolchainLicensePage);
+  ToolchainAccept.Parent := ToolchainLicensePage.Surface;
+  ToolchainAccept.Top := RadioTop;
+  ToolchainAccept.Left := 0;
+  ToolchainAccept.Width := ToolchainLicensePage.SurfaceWidth;
+  ToolchainAccept.Height := ScaleY(20);
+  ToolchainAccept.Caption := 'I accept the toolchain license (GPL-3.0-or-later)';
+  ToolchainAccept.Checked := CmdLineParamExists('/INSTALLTOOLCHAIN');
+
+  ToolchainDecline := TNewRadioButton.Create(ToolchainLicensePage);
+  ToolchainDecline.Parent := ToolchainLicensePage.Surface;
+  ToolchainDecline.Top := RadioTop + ScaleY(20);
+  ToolchainDecline.Left := 0;
+  ToolchainDecline.Width := ToolchainLicensePage.SurfaceWidth;
+  ToolchainDecline.Height := ScaleY(20);
+  ToolchainDecline.Caption := 'I decline; skip the toolchain and continue installing Hub';
+  ToolchainDecline.Checked := not ToolchainAccept.Checked;
+end;
+
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := False;
+  if (ToolchainLicensePage <> nil) and (PageID = ToolchainLicensePage.ID) then
+    Result := (ToolchainCheck = nil) or (not ToolchainCheck.Checked);
+end;
+
+function NextButtonClick(CurPageID: Integer): Boolean;
+begin
+  Result := True;
+  if (ToolchainLicensePage <> nil) and (CurPageID = ToolchainLicensePage.ID) then
+  begin
+    if (ToolchainAccept = nil) or (not ToolchainAccept.Checked) then
+    begin
+      if ToolchainCheck <> nil then
+        ToolchainCheck.Checked := False;
+      Log('Toolchain GPL declined; skipping toolchain download');
+    end
+    else
+      Log('Toolchain GPL accepted');
+  end;
 end;
 
 function IsUpgradeInstall: Boolean;
@@ -172,6 +299,9 @@ begin
             MemoDirInfo + NewLine + NewLine +
             MemoGroupInfo + NewLine + NewLine +
             MemoTasksInfo;
+  if WantToolchain then
+    Result := Result + NewLine + NewLine +
+              'Blazium Toolchain will be downloaded after files are copied (GPL accepted).';
 end;
 
 function NeedsAddPath(Param: string): boolean;
@@ -282,6 +412,31 @@ begin
   end;
 end;
 
+{ Download the GPLv3 toolchain manager via bundled CLI. Never fail Hub setup. }
+procedure InstallToolchainViaCli;
+var
+  ResultCode: Integer;
+  CliPath, AppDir: string;
+begin
+  if not WantToolchain then
+  begin
+    Log('Toolchain download skipped');
+    Exit;
+  end;
+  CliPath := ExpandConstant('{app}\blazium-cli.exe');
+  AppDir := ExpandConstant('{app}');
+  if not FileExists(CliPath) then
+  begin
+    Log('Toolchain requested but blazium-cli.exe is missing');
+    Exit;
+  end;
+  Log('Downloading toolchain via blazium-cli update apply --product toolchain');
+  if Exec(CliPath, 'update apply --product toolchain --install-root "' + AppDir + '"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    Log('CLI toolchain apply exit=' + IntToStr(ResultCode))
+  else
+    Log('CLI toolchain apply failed to start');
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
@@ -289,6 +444,7 @@ begin
     EnvAddPath(ExpandConstant('{app}'));
     WriteInstallKindRegistry;
     EnsureHubRemoteSecrets;
+    InstallToolchainViaCli;
   end;
 end;
 

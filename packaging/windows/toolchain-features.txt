@@ -1,0 +1,21 @@
+Blazium Toolchain is a separate GPLv3 manager. Hub setup does not embed it.
+
+If you opt in, setup runs the bundled blazium-cli to download the manager from the Blazium CDN into this install folder. Compilers and SDKs are not fetched now. After Hub is installed, run:
+
+  blazium-toolchain ps1 setup --profile compile
+  blazium-toolchain ps1 setup --profile dev
+  blazium-toolchain ps1 setup --profile iso
+
+Those commands download compilers into your user cache
+(%LOCALAPPDATA%\Blazium\blazium-toolchain), not into Program Files.
+
+Supported today:
+  ps1       PlayStation 1 — profiles compile, dev, iso
+  ps2       PlayStation 2 — profiles compile, dev, iso
+  n64       Nintendo 64 — profiles compile, dev, rom
+  interdvd  Interactive DVD authoring
+
+Planned:
+  ps3, ps4
+
+Decline this option or the following GPL page to skip the toolchain. Hub still installs.

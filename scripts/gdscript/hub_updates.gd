@@ -5,11 +5,12 @@ const HubSanitize := preload("res://scripts/gdscript/hub_sanitize.gd")
 
 signal status_changed(message: String)
 
-const PRODUCT_ORDER := ["hub", "cli", "crash_reporter", "editor", "templates"]
+const PRODUCT_ORDER := ["hub", "cli", "crash_reporter", "toolchain", "editor", "templates"]
 const PRODUCT_LABELS := {
 	"hub": "Blazium Hub",
 	"cli": "blazium-cli",
 	"crash_reporter": "Crash reporter",
+	"toolchain": "Blazium Toolchain",
 	"editor": "Blazium editor",
 	"templates": "Export templates",
 }
@@ -52,7 +53,7 @@ func install_root() -> String:
 
 ## True when catalog reports a Hub update (ignores session dismissals).
 ## While true, standalone CLI and crash reporter updates are suppressed —
-## Hub ships the newest CLI and sidecar.
+## Hub ships the newest CLI and sidecar. Toolchain is not bundled with Hub.
 func hub_update_outstanding(products: Array) -> bool:
 	return _find_product_status(products, "hub") != null
 
@@ -72,7 +73,8 @@ func _find_product_status(products: Array, name: String) -> Variant:
 
 
 ## Build ordered update prompt queue. Skips CLI and crash reporter when a Hub
-## update is outstanding — Hub ships the newest CLI and sidecar.
+## update is outstanding — Hub ships the newest CLI and sidecar. Toolchain
+## stays queued because Hub does not bundle it.
 func build_update_queue(products: Array, dismissed: Dictionary) -> Array:
 	var hub_outstanding := hub_update_outstanding(products)
 	var queue: Array = []
@@ -198,6 +200,13 @@ func _on_accepted() -> void:
 				_last_summary = HubCli.get_last_error()
 			else:
 				_last_summary = "Crash reporter updated to %s" % latest
+		"toolchain":
+			var r: Variant = await HubCli.update_apply_toolchain_async(install_root())
+			ok = r != null
+			if not ok:
+				_last_summary = HubCli.get_last_error()
+			else:
+				_last_summary = "Blazium Toolchain updated to %s" % latest
 		"hub":
 			var r: Variant = await HubCli.update_apply_hub_async(hub_version(), install_root(), true)
 			ok = r != null

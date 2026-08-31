@@ -25,4 +25,11 @@ if [ -x "$BLAZIUM_ROOT/bin/blazium-hub" ]; then
 elif [ -x "$BLAZIUM_ROOT/bin/blazium-cli" ]; then
   "$BLAZIUM_ROOT/bin/blazium-cli" hub-remote ensure --path /etc/blazium/hub_remote.json || true
 fi
+# Optional toolchain manager via CDN. Default dpkg install is unchanged.
+if [ "${BLAZIUM_INSTALL_TOOLCHAIN:-}" = "1" ] && [ -x "$BLAZIUM_ROOT/bin/blazium-cli" ]; then
+  "$BLAZIUM_ROOT/bin/blazium-cli" update apply --product toolchain --install-root "$BLAZIUM_ROOT" || true
+  if [ -x "$BLAZIUM_ROOT/bin/blazium-toolchain" ]; then
+    ln -sfn "$BLAZIUM_ROOT/bin/blazium-toolchain" /usr/bin/blazium-toolchain
+  fi
+fi
 exit 0
