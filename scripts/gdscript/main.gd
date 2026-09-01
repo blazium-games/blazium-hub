@@ -1,5 +1,7 @@
 extends Control
 
+const DATA_COLLECTION_PROMPT := preload("res://scenes/views/data_collection_prompt.tscn")
+
 @onready var nav_projects: Button = %NavProjects
 @onready var nav_editors: Button = %NavEditors
 @onready var nav_news: Button = %NavNews
@@ -28,7 +30,26 @@ func _ready() -> void:
 		HubUpdates.status_changed.connect(_on_error)
 	_select_tab(0)
 	call_deferred("_initial_refresh")
+	call_deferred("_maybe_show_data_collection_prompt")
 	DisplayServer.window_set_min_size(Vector2i(800, 520))
+
+
+func _maybe_show_data_collection_prompt() -> void:
+	if HubSettings.data_collection_decided:
+		return
+	var prompt: ConfirmationDialog = DATA_COLLECTION_PROMPT.instantiate()
+	add_child(prompt)
+	prompt.consent_given.connect(_on_data_collection_consent)
+	prompt.set_anonymous(HubSettings.data_collection_anonymous)
+
+
+func _on_data_collection_consent(enabled: bool, anonymous: bool) -> void:
+	HubSettings.set_data_collection_enabled(enabled)
+	HubSettings.set_data_collection_anonymous(anonymous)
+	if HubLog:
+		HubLog.append("Data collection %s" % ("enabled" if enabled else "disabled"))
+		if enabled:
+			HubLog.append("Data collection %s" % ("anonymous" if anonymous else "identified"))
 
 
 func _select_tab(idx: int) -> void:

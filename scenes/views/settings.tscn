@@ -61,7 +61,26 @@ unique_name_in_owner = true
 layout_mode = 2
 mouse_default_cursor_shape = 2
 text = "Close window to system tray (Windows)"
-alignment = 1
+flat = true
+
+[node name="HBoxContainer" type="HBoxContainer" parent="."]
+layout_mode = 2
+
+[node name="DataCollectionCheck" type="CheckBox" parent="HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_default_cursor_shape = 2
+text = "Help us out by sharing data"
+flat = true
+
+[node name="AnonymousCheck" type="CheckBox" parent="HBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_default_cursor_shape = 2
+text = "Keep my data anonymous"
+flat = true
 
 [node name="CheckUpgradeBtn" type="Button" parent="."]
 unique_name_in_owner = true
