@@ -4,6 +4,7 @@ extends PanelContainer
 
 signal open_project(_path: String)
 signal remove_project(_path: String)
+signal favorite_changed(_path: String, favorite: bool)
 
 @export var project_name: String:
 	set(v):
@@ -47,8 +48,14 @@ func _ready() -> void:
 	project_name = project_name
 	project_path = project_path
 	busy = busy
+	favorite_button.button_pressed = HubSettings.is_favorite_project(project_path)
+	favorite_button.toggled.connect(_on_favorite_toggled)
 	open_project_button.pressed.connect(_on_open_project_pressed)
 	project_settings_button.get_popup().id_pressed.connect(_on_settings_menu_id_pressed)
+
+
+func _on_favorite_toggled(pressed: bool):
+	favorite_changed.emit(project_path, pressed)
 
 
 func _gui_input(event: InputEvent) -> void:

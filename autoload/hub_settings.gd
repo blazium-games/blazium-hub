@@ -11,6 +11,7 @@ var close_to_tray: bool = true
 var data_collection_decided: bool = false
 var data_collection_enabled: bool = false
 var data_collection_anonymous: bool = true
+var favorite_projects: Array[String] = []
 
 
 func _ready() -> void:
@@ -42,6 +43,15 @@ func load_settings() -> void:
 	data_collection_decided = bool(cfg.get_value("privacy", "data_collection_decided", false))
 	data_collection_enabled = bool(cfg.get_value("privacy", "data_collection_enabled", false))
 	data_collection_anonymous = bool(cfg.get_value("privacy", "data_collection_anonymous", true))
+	var fav_raw: Variant = cfg.get_value("projects", "favorite_projects", PackedStringArray())
+	var fav_arr: Array = []
+	if typeof(fav_raw) == TYPE_PACKED_STRING_ARRAY:
+		for s: String in fav_raw:
+			fav_arr.append(s)
+	elif typeof(fav_raw) == TYPE_ARRAY:
+		for v: Variant in fav_raw:
+			fav_arr.append(str(v))
+	favorite_projects.assign(fav_arr)
 	if HubCli and not cli_path.is_empty():
 		HubCli.set_cli_path(cli_path)
 	_apply_crash_reporter_enabled()
@@ -55,6 +65,7 @@ func save_settings() -> void:
 	cfg.set_value("privacy", "data_collection_decided", data_collection_decided)
 	cfg.set_value("privacy", "data_collection_enabled", data_collection_enabled)
 	cfg.set_value("privacy", "data_collection_anonymous", data_collection_anonymous)
+	cfg.set_value("projects", "favorite_projects", PackedStringArray(favorite_projects))
 	cfg.save(CONFIG_PATH)
 
 
@@ -67,6 +78,19 @@ func set_data_collection_enabled(enabled: bool) -> void:
 
 func set_data_collection_anonymous(anonymous: bool) -> void:
 	data_collection_anonymous = anonymous
+	save_settings()
+
+
+func is_favorite_project(path: String) -> bool:
+	return favorite_projects.has(path)
+
+
+func set_favorite_project(path: String, favorite: bool) -> void:
+	if favorite:
+		if not favorite_projects.has(path):
+			favorite_projects.append(path)
+	else:
+		favorite_projects.erase(path)
 	save_settings()
 
 
