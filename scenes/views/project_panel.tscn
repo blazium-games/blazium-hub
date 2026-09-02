@@ -1,6 +1,6 @@
 [gd_scene load_steps=8 format=3 uid="uid://dywhduguhxgxf"]
 
-[ext_resource type="Texture2D" uid="uid://cc3g04ber7v5v" path="res://icon.svg" id="1_6x3v3"]
+[ext_resource type="Texture2D" uid="uid://dxsnlnpxg3p4s" path="res://icon.svg" id="1_6x3v3"]
 [ext_resource type="Script" uid="uid://c8y6gcxgr1063" path="res://scenes/views/project_panel.gd" id="1_vafae"]
 [ext_resource type="Texture2D" uid="uid://dw5b24pbe8hrx" path="res://assets/icon_mask.svg" id="2_m6xbw"]
 [ext_resource type="Texture2D" uid="uid://b0hls6j1yg6fa" path="res://assets/icons/star.svg" id="5_8c8ro"]
@@ -72,7 +72,6 @@ text = "Project Name"
 
 [node name="FavoriteButton" type="TextureButton" parent="HBox/VBox/HBoxContainer2"]
 unique_name_in_owner = true
-visible = false
 layout_mode = 2
 size_flags_horizontal = 10
 toggle_mode = true
