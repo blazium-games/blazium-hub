@@ -1,6 +1,7 @@
 extends VBoxContainer
 
 const PROJECT_PANEL_SCENE: PackedScene = preload("res://scenes/views/project_panel.tscn")
+const HubProject = preload("res://scripts/gdscript/hub_project.gd")
 
 @onready var project_list: VBoxContainer = %ProjectList
 @onready var add_btn: Button = %AddProjectButton
@@ -16,6 +17,7 @@ func _ready() -> void:
 		return
 	add_btn.pressed.connect(_on_add)
 	scan_btn.pressed.connect(_on_scan)
+	file_dialog.filters = HubProject.PROJECT_FILE_FILTERS
 	file_dialog.file_selected.connect(_on_project_file_selected)
 	scan_dialog.dir_selected.connect(_on_scan_dir_selected)
 	filter_projects_line_edit.text_changed.connect(_update_projects_list)
@@ -85,9 +87,13 @@ func _set_action_busy(busy: bool) -> void:
 
 
 func _on_dir_selected(dir: String) -> void:
+	var project_dir: String = HubProject.dir_from_path(dir)
+	if project_dir.is_empty():
+		status.text = "Need a folder with project.blazium or project.godot"
+		return
 	status.text = "Adding…"
 	_set_action_busy(true)
-	var data: Variant = await HubCli.projects_add_async(dir)
+	var data: Variant = await HubCli.projects_add_async(project_dir)
 	_set_action_busy(false)
 	if data == null:
 		status.text = HubCli.get_last_error()
@@ -103,6 +109,8 @@ func _on_scan_dir_selected(_dir: String):
 	if not dir:
 		_set_action_busy(false)
 		return
+	if HubProject.is_project_dir(_dir):
+		await HubCli.projects_add_async(_dir)
 	dir.list_dir_begin()
 	var next: String = dir.get_next()
 	while next:
@@ -110,7 +118,7 @@ func _on_scan_dir_selected(_dir: String):
 			next = dir.get_next()
 			continue
 		var _dir_path: String = _dir.path_join(next)
-		if FileAccess.file_exists(_dir_path.path_join("project.godot")):
+		if HubProject.is_project_dir(_dir_path):
 			await HubCli.projects_add_async(_dir_path)
 		next = dir.get_next()
 	_set_action_busy(false)
@@ -120,9 +128,13 @@ func _on_scan_dir_selected(_dir: String):
 
 
 func _on_project_file_selected(_file: String):
+	var project_dir: String = HubProject.dir_from_path(_file)
+	if project_dir.is_empty():
+		status.text = "Need a folder with project.blazium or project.godot"
+		return
 	status.text = "Adding…"
 	_set_action_busy(true)
-	var data: Variant = await HubCli.projects_add_async(_file.get_base_dir())
+	var data: Variant = await HubCli.projects_add_async(project_dir)
 	_set_action_busy(false)
 	if data == null:
 		status.text = HubCli.get_last_error()
