@@ -893,7 +893,7 @@ jobs:
           mkdir -p signed/Hub signed/cli signed/crash_reporter
           ls -lh build/package/windows/ build/package/windows/Hub/
 
-      - uses: bioblaze/sslcom-code-signer@v5
+      - uses: bioblaze/sslcom-code-signer@v6
         name: Sign BlaziumHub.exe
         with:
           command: sign
@@ -905,7 +905,7 @@ jobs:
           output_path: ./signed/Hub
           environment_name: PROD
 
-      - uses: bioblaze/sslcom-code-signer@v5
+      - uses: bioblaze/sslcom-code-signer@v6
         name: Sign blazium-cli.exe
         with:
           command: sign
@@ -917,7 +917,7 @@ jobs:
           output_path: ./signed/cli
           environment_name: PROD
 
-      - uses: bioblaze/sslcom-code-signer@v5
+      - uses: bioblaze/sslcom-code-signer@v6
         name: Sign crash_reporter.exe
         with:
           command: sign
@@ -1059,7 +1059,7 @@ jobs:
           echo "name=$(basename "$SETUP")" >> "$GITHUB_OUTPUT"
           ls -lh packaging/windows/Output/
 
-      - uses: bioblaze/sslcom-code-signer@v5
+      - uses: bioblaze/sslcom-code-signer@v6
         name: Sign installer
         with:
           command: sign
