@@ -30,6 +30,8 @@ func test_017_add_dialog_accepts_blazium_and_godot() -> void:
 	assert_true(scene.contains("*.blazium"), "dialog lists *.blazium")
 	assert_true(scene.contains("*.godot"), "dialog lists *.godot")
 	var view := FileAccess.get_file_as_string("res://scripts/gdscript/projects_view.gd")
+	assert_true(scene.contains("New Project"), "new project button")
+	assert_true(view.contains("projects_create_async"), "create uses CLI")
 	assert_true(view.contains("HubProject.is_project_dir"), "scan uses shared detector")
 	assert_true(view.contains("HubProject.dir_from_path"), "add uses shared detector")
 	assert_true(FileAccess.file_exists("res://scripts/gdscript/hub_project.gd"), "detector script")

@@ -95,7 +95,12 @@ func _on_close_requested() -> void:
 	if HubSettings and HubSettings.close_to_tray:
 		var win := get_window()
 		if win:
+			var was_visible := win.visible
 			win.hide()
+			if was_visible and win.visible:
+				get_tree().quit()
+		else:
+			get_tree().quit()
 	else:
 		get_tree().quit()
 

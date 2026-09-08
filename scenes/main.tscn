@@ -254,6 +254,9 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+autowrap_mode = 3
+clip_text = true
+text_overrun_behavior = 3
 text = "Ready"
 
 [node name="DiscordButton" type="Button" parent="PanelContainer/Root/StatusBar/HBoxContainer"]

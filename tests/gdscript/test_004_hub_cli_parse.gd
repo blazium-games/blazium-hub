@@ -44,6 +44,13 @@ func test_004_parse_json_error_exit() -> void:
 	assert_eq(HubCli.get_last_error(), "boom")
 
 
+func test_004_parse_json_blazium_banner() -> void:
+	var text := "Blazium CLI — install editors, manage projects, remote control\n{\"ok\":true,\"projects\":[]}\n"
+	var data: Variant = HubCli.parse_json_output(text, 0)
+	assert_true(typeof(data) == TYPE_DICTIONARY)
+	assert_true(bool((data as Dictionary).get("ok", false)))
+
+
 func test_004_parse_json_empty() -> void:
 	var data: Variant = HubCli.parse_json_output("   ", 0)
 	assert_true(data == null)

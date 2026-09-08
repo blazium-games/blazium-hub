@@ -79,7 +79,12 @@ func _launch_update_check() -> void:
 
 
 func _on_error(msg: String) -> void:
-	status_label.text = msg
+	if msg.contains("did not become ready"):
+		status_label.text = "Editor launched but remote control did not become ready."
+	elif msg.length() > 160:
+		status_label.text = msg.substr(0, 157) + "…"
+	else:
+		status_label.text = msg
 	if HubLog and not msg.is_empty():
 		HubLog.append(msg)
 

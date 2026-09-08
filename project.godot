@@ -61,6 +61,7 @@ window/size/viewport_width=1100
 window/size/viewport_height=720
 window/size/min_viewport_width=800
 window/size/min_viewport_height=520
+window/size/allow_hide_main_window=true
 
 [gui]
 

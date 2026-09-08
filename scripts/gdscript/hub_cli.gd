@@ -227,15 +227,11 @@ func parse_json_output(text: String, code: int) -> Variant:
 	if text.length() > HubSanitize.MAX_CLI_JSON_BYTES:
 		_last_error = "CLI output too large"
 		return null
-	var data: Variant = JSON.parse_string(text)
-	if data == null:
-		var lines := text.split("\n")
-		if not lines.is_empty():
-			data = JSON.parse_string(lines[lines.size() - 1])
-	if data == null:
-		var extracted := extract_last_json_text(text)
-		if not extracted.is_empty():
-			data = JSON.parse_string(extracted)
+	var extracted := extract_last_json_text(text)
+	var payload := extracted if not extracted.is_empty() else text
+	var data: Variant = null
+	if payload.begins_with("{") or payload.begins_with("["):
+		data = JSON.parse_string(payload)
 	if data == null:
 		_last_error = "failed to parse JSON (see Logs): %s" % text.substr(0, 200)
 		return null
@@ -374,10 +370,13 @@ func uninstall_async(version: String, channel: String = "") -> Variant:
 	return await run_json_async(args)
 
 
-func install_path(path: String = "") -> Variant:
+func install_path(path: String = "", move_editors: bool = false) -> Variant:
 	if path.is_empty():
 		return run_json(PackedStringArray(["install-path"]))
-	return run_json(PackedStringArray(["install-path", path]))
+	var args := PackedStringArray(["install-path", path])
+	if move_editors:
+		args.append("--move")
+	return run_json(args)
 
 
 func projects() -> Variant:
@@ -390,6 +389,14 @@ func projects_add(path: String) -> Variant:
 
 func projects_add_async(path: String) -> Variant:
 	return await run_json_async(PackedStringArray(["projects", "add", path]))
+
+
+func projects_create_async(path: String, project_name: String = "") -> Variant:
+	var args := PackedStringArray(["projects", "create", path])
+	if not project_name.strip_edges().is_empty():
+		args.append("--name")
+		args.append(project_name.strip_edges())
+	return await run_json_async(args)
 
 
 func projects_remove(path: String) -> Variant:

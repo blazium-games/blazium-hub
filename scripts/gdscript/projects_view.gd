@@ -4,10 +4,16 @@ const PROJECT_PANEL_SCENE: PackedScene = preload("res://scenes/views/project_pan
 const HubProject = preload("res://scripts/gdscript/hub_project.gd")
 
 @onready var project_list: VBoxContainer = %ProjectList
+@onready var new_btn: Button = %NewProjectButton
 @onready var add_btn: Button = %AddProjectButton
 @onready var scan_btn: Button = %ScanFolderButton
 @onready var file_dialog: FileDialog = %ProjectFileDialog
 @onready var scan_dialog: FileDialog = %ScanFileDialog
+@onready var new_dialog: ConfirmationDialog = %NewProjectDialog
+@onready var new_name_edit: LineEdit = %NewProjectNameEdit
+@onready var new_path_edit: LineEdit = %NewProjectPathEdit
+@onready var browse_new_btn: Button = %BrowseNewProjectBtn
+@onready var new_dir_dialog: FileDialog = %NewProjectDirDialog
 @onready var status: Label = %ProjectsStatus
 @onready var filter_projects_line_edit: LineEdit = %FilterProjectsLineEdit
 
@@ -15,11 +21,15 @@ const HubProject = preload("res://scripts/gdscript/hub_project.gd")
 func _ready() -> void:
 	if HubSelfTest != null and HubSelfTest.active:
 		return
+	new_btn.pressed.connect(_on_new_project)
 	add_btn.pressed.connect(_on_add)
 	scan_btn.pressed.connect(_on_scan)
 	file_dialog.filters = HubProject.PROJECT_FILE_FILTERS
 	file_dialog.file_selected.connect(_on_project_file_selected)
 	scan_dialog.dir_selected.connect(_on_scan_dir_selected)
+	browse_new_btn.pressed.connect(func(): new_dir_dialog.popup_centered_ratio(0.6))
+	new_dir_dialog.dir_selected.connect(func(dir: String): new_path_edit.text = dir)
+	new_dialog.confirmed.connect(_on_new_project_confirmed)
 	filter_projects_line_edit.text_changed.connect(_update_projects_list)
 	reload()
 
@@ -71,6 +81,33 @@ func _build_projects_list(filter_text: String) -> void:
 		status.text = "%d project(s)" % project_list.get_child_count()
 
 
+func _on_new_project() -> void:
+	if new_name_edit.text.is_empty():
+		new_name_edit.text = "New Game"
+	new_dialog.popup_centered()
+
+
+func _on_new_project_confirmed() -> void:
+	var dir := new_path_edit.text.strip_edges()
+	var project_name := new_name_edit.text.strip_edges()
+	if dir.is_empty():
+		status.text = "Choose a project folder"
+		return
+	status.text = "Creating…"
+	_set_action_busy(true)
+	var data: Variant = await HubCli.projects_create_async(dir, project_name)
+	_set_action_busy(false)
+	if data == null:
+		status.text = _short_status(HubCli.get_last_error())
+		if HubLog:
+			HubLog.append("ERROR: %s" % HubCli.get_last_error())
+		return
+	new_dialog.hide()
+	HubState.refresh_projects()
+	reload()
+	status.text = "Created %s" % project_name
+
+
 func _on_add() -> void:
 	file_dialog.popup_centered_ratio(0.6)
 
@@ -79,7 +116,16 @@ func _on_scan() -> void:
 	scan_dialog.popup_centered_ratio(0.6)
 
 
+func _short_status(msg: String) -> String:
+	if msg.contains("did not become ready"):
+		return "Editor launched but remote control did not become ready."
+	if msg.length() > 160:
+		return msg.substr(0, 157) + "…"
+	return msg
+
+
 func _set_action_busy(busy: bool) -> void:
+	new_btn.disabled = busy
 	add_btn.disabled = busy
 	scan_btn.disabled = busy
 	for child in project_list.get_children():
@@ -96,7 +142,7 @@ func _on_dir_selected(dir: String) -> void:
 	var data: Variant = await HubCli.projects_add_async(project_dir)
 	_set_action_busy(false)
 	if data == null:
-		status.text = HubCli.get_last_error()
+		status.text = _short_status(HubCli.get_last_error())
 		return
 	HubState.refresh_projects()
 	reload()
@@ -137,7 +183,7 @@ func _on_project_file_selected(_file: String):
 	var data: Variant = await HubCli.projects_add_async(project_dir)
 	_set_action_busy(false)
 	if data == null:
-		status.text = HubCli.get_last_error()
+		status.text = _short_status(HubCli.get_last_error())
 		return
 	HubState.refresh_projects()
 	reload()
@@ -152,7 +198,7 @@ func _on_remove(_path: String) -> void:
 	var data: Variant = await HubCli.projects_remove_async(_path)
 	_set_action_busy(false)
 	if data == null:
-		status.text = HubCli.get_last_error()
+		status.text = _short_status(HubCli.get_last_error())
 		return
 	HubState.refresh_projects()
 	reload()
@@ -172,7 +218,7 @@ func _on_open(_path: String) -> void:
 	var data: Variant = await HubCli.open_project_async(_path)
 	_set_action_busy(false)
 	if data == null:
-		status.text = HubCli.get_last_error()
+		status.text = _short_status(HubCli.get_last_error())
 		return
 	status.text = "Launched"
 	HubState.refresh_projects()
