@@ -34,3 +34,40 @@ func test_015_sidecar_path_and_launch_args_when_present() -> void:
 	assert_eq(args[1], dest)
 	DirAccess.remove_absolute(dest)
 	DirAccess.remove_absolute(dir)
+
+
+func test_015_data_collection_cli_args_accepted() -> void:
+	var prev_decided: bool = HubSettings.data_collection_decided
+	var prev_enabled: bool = HubSettings.data_collection_enabled
+	var prev_anonymous: bool = HubSettings.data_collection_anonymous
+	HubSettings.data_collection_decided = true
+	HubSettings.data_collection_enabled = true
+	HubSettings.data_collection_anonymous = true
+	var args := HubCli.data_collection_cli_args()
+	assert_eq(args.size(), 2, "consent + mode")
+	assert_eq(args[0], "--analytics=accepted")
+	assert_eq(args[1], "--analytics-mode=anonymous")
+	HubSettings.data_collection_decided = prev_decided
+	HubSettings.data_collection_enabled = prev_enabled
+	HubSettings.data_collection_anonymous = prev_anonymous
+
+
+func test_015_data_collection_cli_args_declined() -> void:
+	var prev_decided: bool = HubSettings.data_collection_decided
+	var prev_enabled: bool = HubSettings.data_collection_enabled
+	var prev_anonymous: bool = HubSettings.data_collection_anonymous
+	HubSettings.data_collection_decided = true
+	HubSettings.data_collection_enabled = false
+	var args := HubCli.data_collection_cli_args()
+	assert_eq(args.size(), 2, "declined + no sidecar")
+	assert_eq(args[0], "--analytics=declined")
+	assert_eq(args[1], "--no-crash-reporter")
+	var launch := HubCli._with_editor_launch_args(PackedStringArray(["open", "/proj"]))
+	assert_eq(launch[0], "open")
+	assert_eq(launch[1], "/proj")
+	assert_eq(launch[2], "--analytics=declined")
+	assert_eq(launch[3], "--no-crash-reporter")
+	assert_eq(launch.size(), 4, "declined does not append --crash-reporter")
+	HubSettings.data_collection_decided = prev_decided
+	HubSettings.data_collection_enabled = prev_enabled
+	HubSettings.data_collection_anonymous = prev_anonymous

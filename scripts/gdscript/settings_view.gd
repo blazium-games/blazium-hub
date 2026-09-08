@@ -7,6 +7,8 @@ const HubSanitize := preload("res://scripts/gdscript/hub_sanitize.gd")
 @onready var install_path_edit: LineEdit = %InstallPathEdit
 @onready var set_install_btn: Button = %SetInstallPathBtn
 @onready var close_tray_check: CheckBox = %CloseToTrayCheck
+@onready var data_collection_check: CheckBox = %DataCollectionCheck
+@onready var anonymous_check: CheckBox = %AnonymousCheck
 @onready var check_upgrade_btn: Button = %CheckUpgradeBtn
 @onready var status: Label = %SettingsStatus
 @onready var cli_dialog: FileDialog = %CliFileDialog
@@ -19,11 +21,16 @@ func _ready() -> void:
 	cli_path_edit.text = HubSettings.get_cli_path()
 	close_tray_check.button_pressed = HubSettings.close_to_tray
 	close_tray_check.visible = OS.get_name() == "Windows"
+	data_collection_check.button_pressed = HubSettings.data_collection_enabled
+	anonymous_check.button_pressed = HubSettings.data_collection_anonymous
+	anonymous_check.disabled = not HubSettings.data_collection_enabled
 	browse_cli_btn.pressed.connect(func(): cli_dialog.popup_centered_ratio(0.6))
 	cli_dialog.file_selected.connect(_on_cli_selected)
 	cli_path_edit.text_submitted.connect(_on_cli_submitted)
 	set_install_btn.pressed.connect(_on_set_install)
 	close_tray_check.toggled.connect(_on_tray_toggled)
+	data_collection_check.toggled.connect(_on_data_collection_toggled)
+	anonymous_check.toggled.connect(_on_anonymous_toggled)
 	check_upgrade_btn.text = "Check for updates"
 	check_upgrade_btn.pressed.connect(_on_check_updates)
 	copy_logs_btn.pressed.connect(_on_copy_logs)
@@ -46,7 +53,16 @@ func _refresh_logs() -> void:
 
 func _on_visibility_changed() -> void:
 	if visible:
+		_refresh_privacy_controls()
 		_refresh_logs()
+
+
+func _refresh_privacy_controls() -> void:
+	if data_collection_check == null or anonymous_check == null or HubSettings == null:
+		return
+	data_collection_check.set_pressed_no_signal(HubSettings.data_collection_enabled)
+	anonymous_check.set_pressed_no_signal(HubSettings.data_collection_anonymous)
+	anonymous_check.disabled = not HubSettings.data_collection_enabled
 
 
 func _on_copy_logs() -> void:
@@ -113,6 +129,21 @@ func _on_set_install() -> void:
 func _on_tray_toggled(pressed: bool) -> void:
 	HubSettings.close_to_tray = pressed
 	HubSettings.save_settings()
+
+
+func _on_data_collection_toggled(pressed: bool) -> void:
+	HubSettings.set_data_collection_enabled(pressed)
+	anonymous_check.disabled = not pressed
+	status.text = "Data collection %s" % ("enabled" if pressed else "disabled")
+	if HubLog:
+		HubLog.append("Data collection %s" % ("enabled" if pressed else "disabled"))
+
+
+func _on_anonymous_toggled(pressed: bool) -> void:
+	HubSettings.set_data_collection_anonymous(pressed)
+	status.text = "Data collection %s" % ("anonymous" if pressed else "identified")
+	if HubLog:
+		HubLog.append("Data collection %s" % ("anonymous" if pressed else "identified"))
 
 
 func _on_check_updates() -> void:

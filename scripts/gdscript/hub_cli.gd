@@ -70,9 +70,30 @@ func crash_reporter_cli_args() -> PackedStringArray:
 	return crash_reporter_cli_args_for(OS.get_executable_path().get_base_dir())
 
 
-func _with_crash_reporter(args: PackedStringArray) -> PackedStringArray:
-	args.append_array(crash_reporter_cli_args())
+func data_collection_cli_args() -> PackedStringArray:
+	var args := PackedStringArray()
+	if HubSettings == null:
+		return args
+	var consent := HubSettings.editor_analytics_consent()
+	if not consent.is_empty():
+		args.append("--analytics=%s" % consent)
+	var mode := HubSettings.editor_analytics_mode()
+	if not mode.is_empty():
+		args.append("--analytics-mode=%s" % mode)
+	if HubSettings.data_collection_decided and not HubSettings.data_collection_enabled:
+		args.append("--no-crash-reporter")
 	return args
+
+
+func _with_editor_launch_args(args: PackedStringArray) -> PackedStringArray:
+	args.append_array(data_collection_cli_args())
+	if HubSettings == null or HubSettings.should_attach_editor_crash_reporter():
+		args.append_array(crash_reporter_cli_args())
+	return args
+
+
+func _with_crash_reporter(args: PackedStringArray) -> PackedStringArray:
+	return _with_editor_launch_args(args)
 
 
 func install_root_from_exe() -> String:

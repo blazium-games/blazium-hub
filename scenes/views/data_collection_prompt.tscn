@@ -1,0 +1,53 @@
+[gd_scene load_steps=2 format=3 uid="uid://cp83vb7u5aryb"]
+
+[ext_resource type="Script" uid="uid://ejp3wxkkgen4" path="res://scenes/views/data_collection_prompt.gd" id="1"]
+
+[node name="DataCollectionPrompt" type="ConfirmationDialog"]
+title = "Help improve Blazium Hub"
+size = Vector2i(480, 254)
+min_size = Vector2i(480, 200)
+ok_button_text = "Allow"
+cancel_button_text = "Decline"
+script = ExtResource("1")
+
+[node name="MainVBox" type="VBoxContainer" parent="."]
+anchors_preset = -1
+anchor_left = 0.015
+anchor_top = 0.019
+anchor_right = 0.985
+anchor_bottom = 0.871
+offset_left = 2.6
+offset_top = 3.174
+offset_right = -2.60001
+offset_bottom = -21.234
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="InfoLabel" type="Label" parent="MainVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(128, 0)
+layout_mode = 2
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="CollectedScroll" type="ScrollContainer" parent="MainVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 128)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="CollectedList" type="VBoxContainer" parent="MainVBox/CollectedScroll"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="AnonymousCheckbox" type="CheckBox" parent="MainVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Keep my data anonymous"
+flat = true

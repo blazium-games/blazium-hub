@@ -54,12 +54,40 @@ local HubCli = {
 		return { "--crash-reporter", p }
 	end,
 
-	_with_crash_reporter = function(self, args)
-		local extra = self:crash_reporter_cli_args_for(OS.get_executable_path():get_base_dir())
-		for _, v in ipairs(extra) do
-			table.insert(args, v)
+	data_collection_cli_args = function(_self)
+		local args = {}
+		if HubSettings == nil then
+			return args
+		end
+		local consent = HubSettings:editor_analytics_consent()
+		if consent and consent ~= "" then
+			table.insert(args, "--analytics=" .. consent)
+		end
+		local mode = HubSettings:editor_analytics_mode()
+		if mode and mode ~= "" then
+			table.insert(args, "--analytics-mode=" .. mode)
+		end
+		if HubSettings.data_collection_decided and not HubSettings.data_collection_enabled then
+			table.insert(args, "--no-crash-reporter")
 		end
 		return args
+	end,
+
+	_with_editor_launch_args = function(self, args)
+		for _, v in ipairs(self:data_collection_cli_args()) do
+			table.insert(args, v)
+		end
+		if HubSettings == nil or HubSettings:should_attach_editor_crash_reporter() then
+			local extra = self:crash_reporter_cli_args_for(OS.get_executable_path():get_base_dir())
+			for _, v in ipairs(extra) do
+				table.insert(args, v)
+			end
+		end
+		return args
+	end,
+
+	_with_crash_reporter = function(self, args)
+		return self:_with_editor_launch_args(args)
 	end,
 
 	get_last_error = function(self)
