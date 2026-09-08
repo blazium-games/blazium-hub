@@ -53,7 +53,16 @@ func _refresh_logs() -> void:
 
 func _on_visibility_changed() -> void:
 	if visible:
+		_refresh_privacy_controls()
 		_refresh_logs()
+
+
+func _refresh_privacy_controls() -> void:
+	if data_collection_check == null or anonymous_check == null or HubSettings == null:
+		return
+	data_collection_check.set_pressed_no_signal(HubSettings.data_collection_enabled)
+	anonymous_check.set_pressed_no_signal(HubSettings.data_collection_anonymous)
+	anonymous_check.disabled = not HubSettings.data_collection_enabled
 
 
 func _on_copy_logs() -> void:

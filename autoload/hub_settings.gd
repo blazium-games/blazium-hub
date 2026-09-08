@@ -54,7 +54,7 @@ func load_settings() -> void:
 	favorite_projects.assign(fav_arr)
 	if HubCli and not cli_path.is_empty():
 		HubCli.set_cli_path(cli_path)
-	_apply_crash_reporter_enabled()
+	_apply_data_collection()
 
 
 func save_settings() -> void:
@@ -72,12 +72,13 @@ func save_settings() -> void:
 func set_data_collection_enabled(enabled: bool) -> void:
 	data_collection_enabled = enabled
 	data_collection_decided = true
-	_apply_crash_reporter_enabled()
+	_apply_data_collection()
 	save_settings()
 
 
 func set_data_collection_anonymous(anonymous: bool) -> void:
 	data_collection_anonymous = anonymous
+	_apply_data_collection()
 	save_settings()
 
 
@@ -98,5 +99,32 @@ func has_data_collection_consent() -> bool:
 	return data_collection_decided and data_collection_enabled
 
 
-func _apply_crash_reporter_enabled() -> void:
+## Engine --analytics= value. Empty means leave the editor unset.
+func editor_analytics_consent() -> String:
+	if not data_collection_decided:
+		return ""
+	return "accepted" if data_collection_enabled else "declined"
+
+
+## Engine --analytics-mode= value. Empty when collection is off or undecided.
+func editor_analytics_mode() -> String:
+	if not has_data_collection_consent():
+		return ""
+	return "anonymous" if data_collection_anonymous else "identified"
+
+
+func should_attach_editor_crash_reporter() -> bool:
+	return not data_collection_decided or data_collection_enabled
+
+
+func _apply_data_collection() -> void:
 	ProjectSettings.set_setting("crash_reporter/enabled", data_collection_enabled)
+	if not Engine.has_singleton("Analytics"):
+		return
+	var analytics: Object = Engine.get_singleton("Analytics")
+	if analytics == null:
+		return
+	if data_collection_decided and analytics.has_method("set_consent"):
+		analytics.call("set_consent", data_collection_enabled)
+	if analytics.has_method("set_anonymous"):
+		analytics.call("set_anonymous", data_collection_anonymous)

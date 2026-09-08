@@ -43,6 +43,8 @@ func test_010_hub_cli_luau() -> void:
 	assert_true(node.has_method("install_root_from_exe"), "install_root_from_exe")
 	assert_true(node.has_method("handle_uri"), "handle_uri")
 	assert_true(node.has_method("editors"), "editors")
+	assert_true(node.has_method("data_collection_cli_args"), "data_collection_cli_args")
+	assert_true(node.has_method("_with_editor_launch_args"), "_with_editor_launch_args")
 	node.call("set_cli_path", "C:/fake/blazium-cli.exe")
 	assert_eq(str(node.call("get_cli_path")), "C:/fake/blazium-cli.exe")
 
