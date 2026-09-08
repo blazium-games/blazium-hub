@@ -13,6 +13,8 @@ var _clients: Array[StreamPeerTCP] = []
 func _skip_for_autowork() -> bool:
 	if OS.get_environment("HUB_AUTOWORK") == "1":
 		return true
+	if HubSelfTest != null and (HubSelfTest.active or HubSelfTest.cmdline_has_self_test()):
+		return true
 	for a in OS.get_cmdline_args():
 		if str(a).ends_with("run_tests.gd"):
 			return true

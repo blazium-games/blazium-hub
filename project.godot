@@ -36,6 +36,7 @@ crash_reporter/endpoint="https://crash.blazium.app/v1/reports"
 
 [autoload]
 
+HubSelfTest="*res://scripts/gdscript/hub_self_test.gd"
 HubSettings="*res://autoload/hub_settings.gd"
 HubLog="*res://autoload/hub_log.gd"
 HubCli="*res://scripts/gdscript/hub_cli.gd"

@@ -17,6 +17,8 @@ var _available_versions: Array = []
 
 
 func _ready() -> void:
+	if HubSelfTest != null and HubSelfTest.active:
+		return
 	channel_option.clear()
 	channel_option.add_item("release", 0)
 	channel_option.add_item("prerelease", 1)

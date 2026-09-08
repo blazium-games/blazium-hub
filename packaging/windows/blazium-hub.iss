@@ -17,6 +17,8 @@
 ;   ... /DIR="D:\Tools\Blazium" /LAUNCH
 ; Silent install and download the GPLv3 toolchain manager via bundled CLI:
 ;   ... /INSTALLTOOLCHAIN
+; Silent install without anonymous install analytics (CI smokes must pass this):
+;   ... /NOANALYTICS
 
 #define MyAppName "Blazium Hub"
 #ifndef MyAppVersion
@@ -73,10 +75,10 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+Name: "analytics"; Description: "Help improve Blazium Hub with anonymous analytics"; GroupDescription: "Privacy:"
 
 [Files]
-; Hub/ currently stages only BlaziumHub.exe (embedded pack). A second Hub\* line
-; that Excludes the exe would match zero files and abort the compile.
+; Hub/ stages BlaziumHub.exe with an embedded pack (embed_pck=true).
 Source: "{#MyAppSourceDir}\Hub\*"; DestDir: "{app}\Hub"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#MyAppSourceDir}\blazium-cli.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppSourceDir}\Hub\crash_reporter.exe"; DestDir: "{app}\Hub"; Flags: ignoreversion
@@ -160,6 +162,21 @@ begin
   ExtractTemporaryFile(Name);
   if LoadStringFromFile(ExpandConstant('{tmp}\') + Name, Data) then
     Result := string(Data);
+end;
+
+function WantAnalytics: Boolean;
+begin
+  if CmdLineParamExists('/NOANALYTICS') then
+  begin
+    Result := False;
+    Exit;
+  end;
+  if WizardSilent then
+  begin
+    Result := True;
+    Exit;
+  end;
+  Result := WizardIsTaskSelected('analytics');
 end;
 
 function WantToolchain: Boolean;
@@ -437,12 +454,66 @@ begin
     Log('CLI toolchain apply failed to start');
 end;
 
+procedure PersistHubAnalyticsConsent;
+var
+  CfgDir, CfgPath, Enabled: string;
+begin
+  CfgDir := ExpandConstant('{userappdata}\Godot\app_userdata\Blazium Hub');
+  CfgPath := CfgDir + '\hub_settings.cfg';
+  if WantAnalytics then
+    Enabled := 'true'
+  else
+    Enabled := 'false';
+  ForceDirectories(CfgDir);
+  SetIniString('privacy', 'data_collection_decided', 'true', CfgPath);
+  SetIniString('privacy', 'data_collection_enabled', Enabled, CfgPath);
+  SetIniString('privacy', 'data_collection_anonymous', 'true', CfgPath);
+  Log('Wrote Hub analytics consent enabled=' + Enabled + ' path=' + CfgPath);
+end;
+
+procedure PostAnonymousInstallEvent;
+var
+  Http: Variant;
+  Body, EventName, Kind: string;
+begin
+  if not WantAnalytics then
+  begin
+    Log('Install analytics skipped');
+    Exit;
+  end;
+  if GIsUpgrade then
+  begin
+    EventName := 'hub_upgraded';
+    Kind := 'upgrade';
+  end
+  else
+  begin
+    EventName := 'hub_installed';
+    Kind := 'fresh';
+  end;
+  Body := '{"event":"' + EventName + '","anonymous":true,"os":"Windows","arch":"{#MyAppArchLabel}","version":"{#MyAppVersion}","install_kind":"' + Kind + '"}';
+  try
+    Http := CreateOleObject('WinHttp.WinHttpRequest.5.1');
+    Http.Open('POST', 'https://crash.blazium.app/v1/events', False);
+    Http.SetRequestHeader('Content-Type', 'application/json');
+    Http.SetRequestHeader('X-App-Id', 'blazium-hub');
+    Http.SetRequestHeader('X-Build-Id', '{#MyAppVersion}');
+    Http.SetTimeouts(4000, 4000, 4000, 8000);
+    Http.Send(Body);
+    Log('Install analytics WinHTTP status=' + IntToStr(Http.Status) + ' event=' + EventName);
+  except
+    Log('Install analytics POST failed (ignored)');
+  end;
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
   begin
     EnvAddPath(ExpandConstant('{app}'));
     WriteInstallKindRegistry;
+    PersistHubAnalyticsConsent;
+    PostAnonymousInstallEvent;
     EnsureHubRemoteSecrets;
     InstallToolchainViaCli;
   end;

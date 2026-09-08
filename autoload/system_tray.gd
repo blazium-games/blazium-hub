@@ -6,6 +6,8 @@ var _menu: PopupMenu
 
 
 func _ready() -> void:
+	if HubSelfTest != null and HubSelfTest.active:
+		return
 	if OS.get_name() != "Windows":
 		return
 	get_tree().set_auto_accept_quit(false)

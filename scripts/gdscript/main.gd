@@ -16,6 +16,8 @@ const DATA_COLLECTION_PROMPT := preload("res://scenes/views/data_collection_prom
 
 
 func _ready() -> void:
+	if HubSelfTest != null and HubSelfTest.active:
+		return
 	nav_projects.pressed.connect(_select_tab.bind(0))
 	nav_editors.pressed.connect(_select_tab.bind(1))
 	nav_news.pressed.connect(_select_tab.bind(2))
