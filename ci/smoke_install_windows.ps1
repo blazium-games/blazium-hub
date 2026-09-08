@@ -44,10 +44,14 @@ Write-Host "=== Assert custom-dir layout ==="
 $hub = Join-Path $CustomDir "Hub\BlaziumHub.exe"
 $cli = Join-Path $CustomDir "blazium-cli.exe"
 $crash = Join-Path $CustomDir "Hub\crash_reporter.exe"
+$crashVer = Join-Path $CustomDir "Hub\crash_reporter.version"
+$hubVer = Join-Path $CustomDir "VERSION"
 $shim = Join-Path $CustomDir "blazium.cmd"
 if (-not (Test-Path $hub)) { throw "missing $hub" }
 if (-not (Test-Path $cli)) { throw "missing $cli" }
 if (-not (Test-Path $crash)) { throw "missing $crash" }
+if (-not (Test-Path $crashVer)) { throw "missing $crashVer" }
+if (-not (Test-Path $hubVer)) { throw "missing $hubVer" }
 if (-not (Test-Path $shim)) { throw "missing $shim" }
 
 Write-Host "=== Hub --headless --self-test --quit ==="

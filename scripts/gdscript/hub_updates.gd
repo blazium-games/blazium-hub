@@ -90,6 +90,10 @@ func build_update_queue(products: Array, dismissed: Dictionary) -> Array:
 	return queue
 
 
+func prompt_title(product: String) -> String:
+	return "%s Update Available" % str(PRODUCT_LABELS.get(product, product))
+
+
 func prompt_body(product: String, latest: String, current: String) -> String:
 	var label := str(PRODUCT_LABELS.get(product, product))
 	if product == "editor" or product == "templates":
@@ -141,7 +145,7 @@ func _ensure_dialog() -> void:
 		return
 	_dialog = ConfirmationDialog.new()
 	_dialog.size.x = 600
-	_dialog.title = "Editor Update Available"
+	_dialog.title = "Update Available"
 	_dialog.ok_button_text = "Update"
 	_dialog.get_ok_button().theme_type_variation = "FilledButton"
 	_dialog.cancel_button_text = "Not now"
@@ -165,6 +169,7 @@ func _show_next() -> void:
 	if product == "hub" and _hub_includes_crash_reporter:
 		body += "\nThis Hub update includes the latest crash reporter."
 	_ensure_dialog()
+	_dialog.title = prompt_title(product)
 	_dialog.dialog_text = body
 	_dialog.dialog_autowrap = true
 	_dialog.popup_centered()

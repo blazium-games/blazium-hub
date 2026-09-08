@@ -24,6 +24,18 @@ contents:
     dst: /opt/blazium/bin/crash_reporter
     file_info:
       mode: 0755
+  - src: ../../build/package/linux/bin/crash_reporter.version
+    dst: /opt/blazium/bin/crash_reporter.version
+    file_info:
+      mode: 0644
+  - src: ../../build/package/linux/VERSION
+    dst: /opt/blazium/VERSION
+    file_info:
+      mode: 0644
+  - src: ../../build/package/linux/bin/VERSION
+    dst: /opt/blazium/bin/VERSION
+    file_info:
+      mode: 0644
   - src: ../../build/package/linux/bin/blazium
     dst: /opt/blazium/bin/blazium
     file_info:

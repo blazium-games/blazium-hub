@@ -34,7 +34,7 @@ jobs:
 
       - name: Test nightly resolver
         working-directory: ci
-        run: python3 -m unittest test_resolve_nightly_engine.py -v
+        run: python3 -m unittest discover -v
 
       - name: Download Blazium editor (nightly, with Autowork + Luau)
         id: editor
@@ -624,6 +624,10 @@ jobs:
           chmod +x build/package/linux/bin/blazium-hub build/package/linux/bin/blazium-cli build/package/linux/bin/crash_reporter
           printf '%s\n' '#!/bin/sh' 'exec "$(dirname "$0")/blazium-cli" "$@"' > build/package/linux/bin/blazium
           chmod +x build/package/linux/bin/blazium
+          printf '%s\n' "${{ needs.resolve-engine.outputs.version }}" > build/package/linux/VERSION
+          printf '%s\n' "${{ needs.resolve-engine.outputs.version }}" > build/package/linux/bin/VERSION
+          test -s build/package/linux/bin/crash_reporter.version
+          test -s build/package/linux/VERSION
           ls -lh build/package/linux/bin/
           build/package/linux/bin/blazium-hub --headless --self-test --quit
 
@@ -860,6 +864,10 @@ jobs:
             --out build/package/windows/Hub/crash_reporter.exe
           cp packaging/windows/blazium.cmd build/package/windows/blazium.cmd
           cp packaging/windows/blazium-hub.cmd build/package/windows/blazium-hub.cmd
+          printf '%s\n' "${{ needs.resolve-engine.outputs.version }}" > build/package/windows/VERSION
+          printf '%s\n' "${{ needs.resolve-engine.outputs.version }}" > build/package/windows/Hub/VERSION
+          test -s build/package/windows/Hub/crash_reporter.version
+          test -s build/package/windows/VERSION
           ls -lh build/package/windows/ build/package/windows/Hub/
           build/package/windows/Hub/BlaziumHub.exe --headless --self-test --quit
 
@@ -894,6 +902,9 @@ jobs:
           test -f build/package/windows/Hub/BlaziumHub.exe
           test -f build/package/windows/blazium-cli.exe
           test -f build/package/windows/Hub/crash_reporter.exe
+          test -s build/package/windows/Hub/crash_reporter.version
+          test -s build/package/windows/VERSION
+          test -s build/package/windows/Hub/VERSION
           mkdir -p signed/Hub signed/cli signed/crash_reporter
           ls -lh build/package/windows/ build/package/windows/Hub/
 

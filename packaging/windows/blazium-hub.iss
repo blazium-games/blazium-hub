@@ -82,6 +82,7 @@ Name: "analytics"; Description: "Help improve Blazium Hub with anonymous analyti
 Source: "{#MyAppSourceDir}\Hub\*"; DestDir: "{app}\Hub"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#MyAppSourceDir}\blazium-cli.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppSourceDir}\Hub\crash_reporter.exe"; DestDir: "{app}\Hub"; Flags: ignoreversion
+Source: "{#MyAppSourceDir}\VERSION"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppSourceDir}\blazium.cmd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppSourceDir}\blazium-hub.cmd"; DestDir: "{app}"; Flags: ignoreversion
 ; Wizard-only texts (extracted in InitializeWizard; not installed).

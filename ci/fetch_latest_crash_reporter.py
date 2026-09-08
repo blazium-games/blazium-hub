@@ -63,6 +63,17 @@ def _load_manifest() -> dict[str, Any]:
         return json.load(resp)
 
 
+def version_sidecar_path(out: Path) -> Path:
+    return out.with_name("crash_reporter.version")
+
+
+def write_version_sidecar(out: Path, version: str) -> Path:
+    path = version_sidecar_path(out)
+    path.write_text(version.strip() + "\n", encoding="utf-8")
+    print(f"Wrote {path} ({version.strip()})")
+    return path
+
+
 def stamp_project_sha256(path: Path, sha: str) -> None:
     text = path.read_text(encoding="utf-8")
     line = f'crash_reporter/reporter_sha256="{sha.lower()}"'
@@ -161,6 +172,7 @@ def main() -> int:
 
     out.write_bytes(data)
     out.chmod(out.stat().st_mode | 0o111)
+    write_version_sidecar(out, version)
     print(f"Wrote {len(data)} bytes")
     return 0
 

@@ -69,7 +69,12 @@ func test_011_crash_reporter_prompt_is_not_editor_copy() -> void:
 	var body := HubUpdates.prompt_body("crash_reporter", "0.1.1", "0.1.0")
 	assert_true(body.contains("Crash reporter"), "label")
 	assert_true(body.contains("0.1.1"), "latest")
+	assert_true(body.contains("0.1.0"), "current")
 	assert_true(not body.contains("default editor"), "not editor wording")
+	assert_eq(HubUpdates.prompt_title("crash_reporter"), "Crash reporter Update Available")
+	assert_eq(HubUpdates.prompt_title("hub"), "Blazium Hub Update Available")
+	var unknown := HubUpdates.prompt_body("crash_reporter", "0.1.2", "")
+	assert_true(unknown.contains("(unknown)"), "empty current stays unknown")
 
 
 func test_011_editor_still_queued_with_hub() -> void:
