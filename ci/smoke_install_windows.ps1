@@ -28,6 +28,7 @@ if (-not $env:RUNNER_TEMP) { $SetupLog = Join-Path ([System.IO.Path]::GetTempPat
 Write-Host "=== Silent install to $CustomDir ==="
 $p = Start-Process -FilePath $SetupPath -ArgumentList @(
     "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-",
+    "/NOANALYTICS",
     "/DIR=$CustomDir",
     "/LOG=$SetupLog"
 ) -Wait -PassThru
@@ -48,6 +49,10 @@ if (-not (Test-Path $hub)) { throw "missing $hub" }
 if (-not (Test-Path $cli)) { throw "missing $cli" }
 if (-not (Test-Path $crash)) { throw "missing $crash" }
 if (-not (Test-Path $shim)) { throw "missing $shim" }
+
+Write-Host "=== Hub --headless --self-test --quit ==="
+$st = Start-Process -FilePath $hub -ArgumentList @("--headless", "--self-test", "--quit") -Wait -PassThru -WorkingDirectory (Split-Path $hub)
+if ($st.ExitCode -ne 0) { throw "Hub self-test exit $($st.ExitCode)" }
 
 $blazium = [string](Get-MachineEnv "BLAZIUM")
 if ($blazium -ne $CustomDir) {
@@ -124,6 +129,7 @@ if (-not $env:RUNNER_TEMP) { $UpgradeLog = Join-Path ([System.IO.Path]::GetTempP
 Write-Host "=== Silent reinstall (upgrade) ==="
 $p2 = Start-Process -FilePath $SetupPath -ArgumentList @(
     "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/SP-",
+    "/NOANALYTICS",
     "/DIR=$CustomDir",
     "/LOG=$UpgradeLog"
 ) -Wait -PassThru

@@ -6,7 +6,8 @@ DEB="${1:?usage: smoke_install_linux.sh <path-to.deb>}"
 test -f "$DEB"
 
 echo "=== Install $DEB ==="
-sudo dpkg -i "$DEB" || sudo apt-get install -f -y
+export BLAZIUM_NO_ANALYTICS=1
+sudo --preserve-env=BLAZIUM_NO_ANALYTICS dpkg -i "$DEB" || sudo --preserve-env=BLAZIUM_NO_ANALYTICS apt-get install -f -y
 
 echo "=== Assert install layout ==="
 test -x /opt/blazium/bin/blazium-hub
@@ -28,6 +29,9 @@ echo "=== blazium-cli version ==="
 VER_OUT="$(/opt/blazium/bin/blazium-cli version)"
 test -n "$VER_OUT"
 echo "$VER_OUT"
+
+echo "=== Hub --headless --self-test --quit ==="
+/opt/blazium/bin/blazium-hub --headless --self-test --quit
 
 echo "=== Seed user markers ==="
 mkdir -p "$HOME/.config/blazium" "$HOME/.local/share/blazium"

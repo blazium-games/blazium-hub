@@ -16,6 +16,8 @@ var path_override: String = ""
 
 
 func _ready() -> void:
+	if HubSelfTest != null and HubSelfTest.active:
+		return
 	_parse_cmdline()
 	call_deferred("_bootstrap")
 

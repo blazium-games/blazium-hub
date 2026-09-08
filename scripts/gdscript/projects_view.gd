@@ -12,6 +12,8 @@ const PROJECT_PANEL_SCENE: PackedScene = preload("res://scenes/views/project_pan
 
 
 func _ready() -> void:
+	if HubSelfTest != null and HubSelfTest.active:
+		return
 	add_btn.pressed.connect(_on_add)
 	scan_btn.pressed.connect(_on_scan)
 	file_dialog.file_selected.connect(_on_project_file_selected)

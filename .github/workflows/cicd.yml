@@ -606,6 +606,7 @@ jobs:
           echo "HUB_BIN=$OUT" >> "$GITHUB_ENV"
           echo "### Hub Linux ${ARCH}" >> "$GITHUB_STEP_SUMMARY"
           du -h "$OUT" >> "$GITHUB_STEP_SUMMARY"
+          "$OUT" --headless --self-test --quit
 
       - name: Fetch matching-arch blazium-cli + crash_reporter + stage package tree
         run: |
@@ -624,6 +625,7 @@ jobs:
           printf '%s\n' '#!/bin/sh' 'exec "$(dirname "$0")/blazium-cli" "$@"' > build/package/linux/bin/blazium
           chmod +x build/package/linux/bin/blazium
           ls -lh build/package/linux/bin/
+          build/package/linux/bin/blazium-hub --headless --self-test --quit
 
       - name: Install nfpm
         run: |
@@ -840,6 +842,7 @@ jobs:
           cp "$OUT" build/windows/BlaziumHub.exe
           echo "### Hub Windows ${ARCH}" >> "$GITHUB_STEP_SUMMARY"
           ls -lh "$OUT" >> "$GITHUB_STEP_SUMMARY"
+          build/windows/BlaziumHub.exe --headless --self-test --quit
 
       - name: Fetch matching-arch blazium-cli + crash_reporter + stage package tree
         shell: bash
@@ -858,6 +861,7 @@ jobs:
           cp packaging/windows/blazium.cmd build/package/windows/blazium.cmd
           cp packaging/windows/blazium-hub.cmd build/package/windows/blazium-hub.cmd
           ls -lh build/package/windows/ build/package/windows/Hub/
+          build/package/windows/Hub/BlaziumHub.exe --headless --self-test --quit
 
       - uses: actions/upload-artifact@v4
         with:
