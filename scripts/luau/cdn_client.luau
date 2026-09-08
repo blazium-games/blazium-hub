@@ -15,6 +15,13 @@ local CdnClient = {
 		return self._last_error
 	end,
 
+	catalog_channel_alias = function(_self, channel)
+		if tostring(channel) == "prerelease" then
+			return "pre-release"
+		end
+		return ""
+	end,
+
 	latest_path = function(_self, channel)
 		return "/catalog/versions/" .. tostring(channel) .. "/latest.json"
 	end,

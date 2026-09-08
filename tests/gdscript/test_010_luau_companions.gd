@@ -70,7 +70,9 @@ func test_010_cdn_client_luau() -> void:
 	assert_true(node.has_method("versions"), "versions")
 	assert_true(node.has_method("editors_for"), "editors_for")
 	assert_true(node.has_method("latest_path"), "latest_path")
+	assert_true(node.has_method("catalog_channel_alias"), "catalog_channel_alias")
 	assert_eq(str(node.call("latest_path", "release")), "/catalog/versions/release/latest.json")
+	assert_eq(str(node.call("catalog_channel_alias", "prerelease")), "pre-release")
 
 
 func test_010_uri_router_luau() -> void:

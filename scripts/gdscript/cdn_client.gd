@@ -78,6 +78,14 @@ func fetch_json(path: String) -> Variant:
 	return data
 
 
+static func catalog_channel_alias(channel: String) -> String:
+	match channel.strip_edges().to_lower():
+		"prerelease":
+			return "pre-release"
+		_:
+			return ""
+
+
 static func latest_path(channel: String) -> String:
 	if not HubSanitize.is_valid_channel(channel):
 		return ""
@@ -117,7 +125,13 @@ func latest(channel: String) -> Variant:
 	if path.is_empty():
 		_last_error = "invalid channel"
 		return null
-	return await fetch_json(path)
+	var data: Variant = await fetch_json(path)
+	if data != null:
+		return data
+	var alias := catalog_channel_alias(channel)
+	if alias.is_empty():
+		return null
+	return await fetch_json("/catalog/versions/%s/latest.json" % alias)
 
 
 func versions(channel: String) -> Variant:
@@ -125,7 +139,13 @@ func versions(channel: String) -> Variant:
 	if path.is_empty():
 		_last_error = "invalid channel"
 		return null
-	return await fetch_json(path)
+	var data: Variant = await fetch_json(path)
+	if data != null:
+		return data
+	var alias := catalog_channel_alias(channel)
+	if alias.is_empty():
+		return null
+	return await fetch_json("/catalog/versions/%s.json" % alias)
 
 
 func editors_for(channel: String, version: String) -> Variant:
