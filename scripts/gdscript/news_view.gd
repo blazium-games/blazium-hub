@@ -17,6 +17,7 @@ const NEWS_PANEL_SCENE: PackedScene = preload("res://scenes/views/news_panel.tsc
 var _items: Array = []
 var _loading: bool = false
 var _opening: bool = false
+var _article_textures: Array[Texture2D] = []
 
 
 func _ready() -> void:
@@ -177,8 +178,7 @@ func _open_article(item: Dictionary) -> void:
 	bbcode = await _localize_images(bbcode)
 	article_title.text = HubSanitize.clamp_text(str(item.get("title", slug)), HubSanitize.MAX_TITLE_LEN)
 	_set_hosts_bbcode(hosts_bb)
-	article_body.clear()
-	article_body.append_text(bbcode)
+	_render_article_bbcode(bbcode)
 	_show_detail()
 	_set_status(slug)
 
@@ -229,3 +229,41 @@ func _cache_image(url: String, cache_dir: String) -> String:
 			return ""
 		f.store_buffer(bytes)
 	return ProjectSettings.globalize_path(local).replace("\\", "/")
+
+
+func _render_article_bbcode(bbcode: String) -> void:
+	article_body.clear()
+	_article_textures.clear()
+	var re := RegEx.new()
+	if re.compile("\\[img\\](.*?)\\[/img\\]") != OK:
+		article_body.append_text(bbcode)
+		return
+	var pos := 0
+	for m in re.search_all(bbcode):
+		var start := m.get_start()
+		if start > pos:
+			article_body.append_text(bbcode.substr(pos, start - pos))
+		var tex := _texture_from_local(m.get_string(1).strip_edges())
+		if tex:
+			_article_textures.append(tex)
+			article_body.add_image(tex)
+		pos = m.get_end()
+	if pos < bbcode.length():
+		article_body.append_text(bbcode.substr(pos))
+
+
+func _texture_from_local(path: String) -> Texture2D:
+	if path.is_empty() or path.begins_with("http"):
+		return null
+	var img := Image.new()
+	if img.load(path) != OK:
+		if not FileAccess.file_exists(path):
+			return null
+		var bytes := FileAccess.get_file_as_bytes(path)
+		if bytes.is_empty():
+			return null
+		if img.load_png_from_buffer(bytes) != OK and img.load_jpg_from_buffer(bytes) != OK and img.load_webp_from_buffer(bytes) != OK:
+			return null
+	if img.is_empty():
+		return null
+	return ImageTexture.create_from_image(img)

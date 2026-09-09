@@ -267,19 +267,11 @@ local HubCli = {
 			self._last_error = "empty CLI output (exit " .. tostring(code) .. ")"
 			return nil
 		end
-		local data = JSON.parse_string(text)
-		if data == nil then
-			local last = text
-			for line in string.gmatch(text, "[^\r\n]+") do
-				last = line
-			end
-			data = JSON.parse_string(last)
-		end
-		if data == nil then
-			local extracted = self:extract_last_json_text(text)
-			if extracted ~= "" then
-				data = JSON.parse_string(extracted)
-			end
+		local extracted = self:extract_last_json_text(text)
+		local payload = extracted ~= "" and extracted or text
+		local data = nil
+		if string.sub(payload, 1, 1) == "{" or string.sub(payload, 1, 1) == "[" then
+			data = JSON.parse_string(payload)
 		end
 		if data == nil then
 			self._last_error = "failed to parse JSON (see Logs): " .. string.sub(text, 1, 200)
@@ -325,9 +317,13 @@ local HubCli = {
 		return self:run_json(args)
 	end,
 
-	install_path = function(self, path)
+	install_path = function(self, path, move_editors)
 		if path and path ~= "" then
-			return self:run_json({ "install-path", path })
+			local args = { "install-path", path }
+			if move_editors then
+				table.insert(args, "--move")
+			end
+			return self:run_json(args)
 		end
 		return self:run_json({ "install-path" })
 	end,
@@ -338,6 +334,15 @@ local HubCli = {
 
 	projects_add = function(self, path)
 		return self:run_json({ "projects", "add", path })
+	end,
+
+	projects_create = function(self, path, project_name)
+		local args = { "projects", "create", path }
+		if project_name and project_name ~= "" then
+			table.insert(args, "--name")
+			table.insert(args, project_name)
+		end
+		return self:run_json(args)
 	end,
 
 	projects_remove = function(self, path)

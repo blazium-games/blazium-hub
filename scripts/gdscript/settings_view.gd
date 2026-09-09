@@ -5,6 +5,7 @@ const HubSanitize := preload("res://scripts/gdscript/hub_sanitize.gd")
 @onready var cli_path_edit: LineEdit = %CliPathEdit
 @onready var browse_cli_btn: Button = %BrowseCliBtn
 @onready var install_path_edit: LineEdit = %InstallPathEdit
+@onready var browse_install_btn: Button = %BrowseInstallBtn
 @onready var set_install_btn: Button = %SetInstallPathBtn
 @onready var close_tray_check: CheckBox = %CloseToTrayCheck
 @onready var data_collection_check: CheckBox = %DataCollectionCheck
@@ -12,6 +13,7 @@ const HubSanitize := preload("res://scripts/gdscript/hub_sanitize.gd")
 @onready var check_upgrade_btn: Button = %CheckUpgradeBtn
 @onready var status: Label = %SettingsStatus
 @onready var cli_dialog: FileDialog = %CliFileDialog
+@onready var install_dir_dialog: FileDialog = %InstallDirDialog
 @onready var logs_edit: TextEdit = %LogsEdit
 @onready var copy_logs_btn: Button = %CopyLogsBtn
 @onready var clear_logs_btn: Button = %ClearLogsBtn
@@ -26,6 +28,8 @@ func _ready() -> void:
 	anonymous_check.disabled = not HubSettings.data_collection_enabled
 	browse_cli_btn.pressed.connect(func(): cli_dialog.popup_centered_ratio(0.6))
 	cli_dialog.file_selected.connect(_on_cli_selected)
+	browse_install_btn.pressed.connect(func(): install_dir_dialog.popup_centered_ratio(0.6))
+	install_dir_dialog.dir_selected.connect(_on_install_dir_selected)
 	cli_path_edit.text_submitted.connect(_on_cli_submitted)
 	set_install_btn.pressed.connect(_on_set_install)
 	close_tray_check.toggled.connect(_on_tray_toggled)
@@ -109,12 +113,22 @@ func _on_cli_submitted(text: String) -> void:
 		HubLog.append("CLI path saved: %s" % text)
 
 
+func _on_install_dir_selected(path: String) -> void:
+	install_path_edit.text = path
+	_on_set_install()
+
+
 func _on_set_install() -> void:
 	var path := install_path_edit.text.strip_edges()
 	if path.is_empty():
 		status.text = "Enter an install path"
 		return
-	var data: Variant = HubCli.install_path(path)
+	var current := ""
+	var cur: Variant = HubCli.install_path()
+	if typeof(cur) == TYPE_DICTIONARY:
+		current = str(cur.get("path", cur.get("install_path", "")))
+	var move_editors := not current.is_empty() and current.simplify_path() != path.simplify_path()
+	var data: Variant = HubCli.install_path(path, move_editors)
 	if data == null:
 		status.text = HubCli.get_last_error()
 		if HubLog:
