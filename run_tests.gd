@@ -11,7 +11,13 @@ func _initialize() -> void:
 	var autowork = ClassDB.instantiate("Autowork")
 	root.add_child(autowork)
 
-	# .autoworkconfig.json collects res://tests/gdscript (*.gd).
+	# Apply .autoworkconfig.json before extra dirs so include_subdirs is set first.
+	# Config suffix is .gd only; Luau is added below with its own suffix.
+	if ClassDB.class_exists("AutoworkConfig"):
+		var cfg = ClassDB.instantiate("AutoworkConfig")
+		cfg.load_options("res://.autoworkconfig.json")
+		cfg.apply_options(autowork)
+
 	# Luau AutoworkTest scripts (pure logic + require) when Luau is available.
 	if ClassDB.class_exists("LuauScript") or ClassDB.class_exists("LuauScriptLanguage"):
 		autowork.add_directory("res://tests/luau", "test_", ".luau")

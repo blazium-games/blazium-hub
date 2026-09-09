@@ -38,7 +38,7 @@ Write-Host "Using editor: $Editor"
 $env:HUB_AUTOWORK = "1"
 $args = @("--headless", "--path", $Root, "-s", "run_tests.gd")
 if ($JUnit) {
-    $env:AW_JUNIT = $JUnit
+    $args += "--aw-junit=$JUnit"
 }
 
 & $Editor @args

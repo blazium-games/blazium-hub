@@ -1,4 +1,4 @@
--- AutoworkTest in Luau. Prefer error() over assert_* — Autowork C++ asserts are not bound into the Luau VM.
+-- AutoworkTest in Luau. Newer engines bind assert_*; keep error()/must() so release-editor CI still runs.
 local function is_hub_show_uri(uri)
 	if type(uri) ~= "string" then
 		return false
