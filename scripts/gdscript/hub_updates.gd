@@ -1,5 +1,6 @@
 extends Node
 ## Launch/settings update prompts. Session dismissals clear on relaunch.
+## Declined editor versions persist so that same engine update is not asked again.
 
 const HubSanitize := preload("res://scripts/gdscript/hub_sanitize.gd")
 
@@ -9,7 +10,7 @@ const PRODUCT_ORDER := ["hub", "cli", "crash_reporter", "toolchain", "editor", "
 const PRODUCT_LABELS := {
 	"hub": "Blazium Hub",
 	"cli": "blazium-cli",
-	"crash_reporter": "Crash reporter",
+	"crash_reporter": "Blazium Crash Reporter",
 	"toolchain": "Blazium Toolchain",
 	"editor": "Blazium editor",
 	"templates": "Export templates",
@@ -72,10 +73,35 @@ func _find_product_status(products: Array, name: String) -> Variant:
 	return null
 
 
+func _version_declined(latest: String, declined: Array) -> bool:
+	var v := latest.strip_edges()
+	if v.is_empty():
+		return false
+	return declined.has(v)
+
+
+func _should_skip_templates(products: Array, dismissed: Dictionary, declined: Array, templates_item: Variant) -> bool:
+	if typeof(templates_item) != TYPE_DICTIONARY:
+		return false
+	if dismissed.has("editor"):
+		return true
+	var editor_item: Variant = _find_product_status(products, "editor")
+	if editor_item != null and _version_declined(str(editor_item.get("latest_version", "")), declined):
+		return true
+	return _version_declined(str(templates_item.get("latest_version", "")), declined)
+
+
+func _declined_editor_versions() -> Array:
+	if HubSettings and HubSettings.has_method("get_declined_editor_versions"):
+		return HubSettings.get_declined_editor_versions()
+	return []
+
+
 ## Build ordered update prompt queue. Skips CLI and crash reporter when a Hub
 ## update is outstanding — Hub ships the newest CLI and sidecar. Toolchain
-## stays queued because Hub does not bundle it.
-func build_update_queue(products: Array, dismissed: Dictionary) -> Array:
+## stays queued because Hub does not bundle it. Skips templates when the editor
+## was declined this session or its latest version was previously declined.
+func build_update_queue(products: Array, dismissed: Dictionary, declined_editor_versions: Array = []) -> Array:
 	var hub_outstanding := hub_update_outstanding(products)
 	var queue: Array = []
 	for name in PRODUCT_ORDER:
@@ -86,19 +112,33 @@ func build_update_queue(products: Array, dismissed: Dictionary) -> Array:
 		var item: Variant = _find_product_status(products, name)
 		if item == null:
 			continue
+		if name == "editor" and _version_declined(str(item.get("latest_version", "")), declined_editor_versions):
+			continue
+		if name == "templates" and _should_skip_templates(products, dismissed, declined_editor_versions, item):
+			continue
 		queue.append(item)
 	return queue
 
 
 func prompt_title(product: String) -> String:
+	if product == "editor":
+		return "Install Blazium editor"
 	return "%s Update Available" % str(PRODUCT_LABELS.get(product, product))
+
+
+func prompt_ok_button(product: String) -> String:
+	if product == "editor":
+		return "Install"
+	return "Update"
 
 
 func prompt_body(product: String, latest: String, current: String) -> String:
 	var label := str(PRODUCT_LABELS.get(product, product))
-	if product == "editor" or product == "templates":
-		var cur_ed := current if not current.is_empty() else "(no default editor)"
-		return "%s version %s is now available, want to update the default editor version? Current version is %s" % [label, latest, cur_ed]
+	var cur_ed := current if not current.is_empty() else "(no default editor)"
+	if product == "editor":
+		return "%s version %s is now available, want to install it? Current version is %s" % [label, latest, cur_ed]
+	if product == "templates":
+		return "Install export templates for version %s? Current version is %s" % [latest, cur_ed]
 	var cur := current if not current.is_empty() else "(unknown)"
 	return "%s %s is available (current %s). Update now?" % [label, latest, cur]
 
@@ -129,7 +169,7 @@ func check_and_prompt(clear_session_dismissals: bool = false) -> void:
 	_hub_includes_crash_reporter = (
 		hub_update_outstanding(products) and _find_product_status(products, "crash_reporter") != null
 	)
-	_queue = build_update_queue(products, _dismissed)
+	_queue = build_update_queue(products, _dismissed, _declined_editor_versions())
 	if _queue.is_empty():
 		_last_summary = "All products up to date"
 		status_changed.emit(_last_summary)
@@ -167,19 +207,36 @@ func _show_next() -> void:
 	if product == "hub" and _hub_includes_cli:
 		body += "\nThis Hub update includes the latest blazium-cli."
 	if product == "hub" and _hub_includes_crash_reporter:
-		body += "\nThis Hub update includes the latest crash reporter."
+		body += "\nThis Hub update includes the latest Blazium Crash Reporter."
 	_ensure_dialog()
 	_dialog.title = prompt_title(product)
+	_dialog.ok_button_text = prompt_ok_button(product)
 	_dialog.dialog_text = body
 	_dialog.dialog_autowrap = true
 	_dialog.popup_centered()
 
 
+func _drop_queued_product(name: String) -> void:
+	var kept: Array = []
+	for item in _queue:
+		if str(item.get("product", "")) != name:
+			kept.append(item)
+	_queue = kept
+
+
 func _on_declined() -> void:
 	var product := str(_pending.get("product", ""))
+	var latest := str(_pending.get("latest_version", ""))
 	if not product.is_empty():
 		_dismissed[product] = true
-		_last_summary = "Skipped %s until next relaunch" % str(PRODUCT_LABELS.get(product, product))
+		if product == "editor":
+			if HubSettings and HubSettings.has_method("add_declined_editor_version"):
+				HubSettings.add_declined_editor_version(latest)
+			_dismissed["templates"] = true
+			_drop_queued_product("templates")
+			_last_summary = "Skipped %s %s" % [str(PRODUCT_LABELS.get(product, product)), latest]
+		else:
+			_last_summary = "Skipped %s until next relaunch" % str(PRODUCT_LABELS.get(product, product))
 		status_changed.emit(_last_summary)
 	_pending = {}
 	call_deferred("_show_next")
@@ -204,7 +261,7 @@ func _on_accepted() -> void:
 			if not ok:
 				_last_summary = HubCli.get_last_error()
 			else:
-				_last_summary = "Crash reporter updated to %s" % latest
+				_last_summary = "Blazium Crash Reporter updated to %s" % latest
 		"toolchain":
 			var r: Variant = await HubCli.update_apply_toolchain_async(install_root())
 			ok = r != null

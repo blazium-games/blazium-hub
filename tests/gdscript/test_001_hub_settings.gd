@@ -26,6 +26,30 @@ func test_001_settings_defaults_and_persist() -> void:
 	assert_eq(HubSettings.get_cli_path(), "", "set_cli_path_value clears")
 
 
+func test_001_declined_editor_versions_round_trip() -> void:
+	var prev: Array = HubSettings.get_declined_editor_versions()
+	HubSettings.declined_editor_versions.clear()
+	HubSettings.save_settings()
+	HubSettings.add_declined_editor_version("0.6.830")
+	assert_true(HubSettings.has_declined_editor_version("0.6.830"), "records declined version")
+	HubSettings.add_declined_editor_version("0.6.830")
+	assert_eq(HubSettings.get_declined_editor_versions().size(), 1, "dedupes same version")
+	HubSettings.declined_editor_versions.clear()
+	HubSettings.load_settings()
+	assert_true(HubSettings.has_declined_editor_version("0.6.830"), "declined versions persist")
+	HubSettings.declined_editor_versions.clear()
+	for v: Variant in prev:
+		HubSettings.declined_editor_versions.append(str(v))
+	HubSettings.save_settings()
+
+
+func test_001_auto_accept_quit_disabled() -> void:
+	assert_false(bool(ProjectSettings.get_setting("application/config/auto_accept_quit", true)), "close-to-tray requires auto_accept_quit off")
+	var loop := Engine.get_main_loop()
+	if loop is SceneTree:
+		assert_false((loop as SceneTree).auto_accept_quit, "runtime auto_accept_quit stays off")
+
+
 func test_001_data_collection_editor_args() -> void:
 	var prev_decided: bool = HubSettings.data_collection_decided
 	var prev_enabled: bool = HubSettings.data_collection_enabled

@@ -67,11 +67,11 @@ func test_011_crash_reporter_only_when_hub_current() -> void:
 
 func test_011_crash_reporter_prompt_is_not_editor_copy() -> void:
 	var body := HubUpdates.prompt_body("crash_reporter", "0.1.1", "0.1.0")
-	assert_true(body.contains("Crash reporter"), "label")
+	assert_true(body.contains("Blazium Crash Reporter"), "label")
 	assert_true(body.contains("0.1.1"), "latest")
 	assert_true(body.contains("0.1.0"), "current")
 	assert_true(not body.contains("default editor"), "not editor wording")
-	assert_eq(HubUpdates.prompt_title("crash_reporter"), "Crash reporter Update Available")
+	assert_eq(HubUpdates.prompt_title("crash_reporter"), "Blazium Crash Reporter Update Available")
 	assert_eq(HubUpdates.prompt_title("hub"), "Blazium Hub Update Available")
 	var unknown := HubUpdates.prompt_body("crash_reporter", "0.1.2", "")
 	assert_true(unknown.contains("(unknown)"), "empty current stays unknown")
@@ -110,3 +110,49 @@ func test_011_toolchain_prompt_is_not_editor_copy() -> void:
 	assert_true(body.contains("Blazium Toolchain"), "label")
 	assert_true(body.contains("0.1.2"), "latest")
 	assert_true(not body.contains("default editor"), "not editor wording")
+
+
+func _products_editor_and_templates(editor_latest: String, templates_latest: String) -> Array:
+	return [
+		{"product": "hub", "update_available": false, "error": ""},
+		{"product": "editor", "update_available": true, "current_version": "0.6.700", "latest_version": editor_latest, "error": ""},
+		{"product": "templates", "update_available": true, "current_version": "0.6.700", "latest_version": templates_latest, "error": ""},
+	]
+
+
+func test_011_editor_prompt_is_install_not_update() -> void:
+	var body := HubUpdates.prompt_body("editor", "0.6.830", "0.6.700")
+	assert_true(body.contains("Blazium editor"), "label")
+	assert_true(body.contains("0.6.830"), "latest")
+	assert_true(body.contains("0.6.700"), "current")
+	assert_true(body.contains("install"), "asks to install")
+	assert_true(not body.contains("update"), "does not say update")
+	assert_eq(HubUpdates.prompt_title("editor"), "Install Blazium editor")
+	assert_eq(HubUpdates.prompt_ok_button("editor"), "Install")
+	assert_eq(HubUpdates.prompt_ok_button("hub"), "Update")
+	var empty_cur := HubUpdates.prompt_body("editor", "0.6.830", "")
+	assert_true(empty_cur.contains("(no default editor)"), "empty current")
+	var tpl := HubUpdates.prompt_body("templates", "0.6.830", "0.6.700")
+	assert_true(tpl.contains("Install export templates"), "templates install wording")
+	assert_true(not tpl.contains("default editor"), "templates not editor-update copy")
+
+
+func test_011_declined_editor_version_skips_editor_and_templates() -> void:
+	var products := _products_editor_and_templates("0.6.830", "0.6.830")
+	var names := _queue_names(HubUpdates.build_update_queue(products, {}, ["0.6.830"]))
+	assert_eq(names.size(), 0, "declined editor version skips editor and templates")
+
+
+func test_011_newer_editor_version_still_queued() -> void:
+	var products := _products_editor_and_templates("0.6.900", "0.6.900")
+	var names := _queue_names(HubUpdates.build_update_queue(products, {}, ["0.6.830"]))
+	assert_eq(names.size(), 2, "newer engine still queued")
+	assert_eq(names[0], "editor")
+	assert_eq(names[1], "templates")
+
+
+func test_011_session_dismiss_editor_drops_templates() -> void:
+	var products := _products_editor_and_templates("0.6.830", "0.6.830")
+	var names := _queue_names(HubUpdates.build_update_queue(products, {"editor": true}, []))
+	assert_eq(names.size(), 0, "session editor dismiss skips templates")
+	assert_true(names.find("templates") < 0, "templates not queued")
