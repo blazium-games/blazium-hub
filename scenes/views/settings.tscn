@@ -147,7 +147,7 @@ use_native_dialog = true
 
 [node name="InstallDirDialog" type="FileDialog" parent="."]
 unique_name_in_owner = true
-title = "Open a Directory"
+title = "Select editor install folder"
 ok_button_text = "Select Current Folder"
 file_mode = 2
 access = 2

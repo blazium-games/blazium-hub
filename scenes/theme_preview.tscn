@@ -1,4 +1,6 @@
-[gd_scene format=3 uid="uid://qypcdl0rxl8i"]
+[gd_scene load_steps=2 format=3 uid="uid://qypcdl0rxl8i"]
+
+[ext_resource type="Script" path="res://scripts/gdscript/theme_preview.gd" id="1"]
 
 [node name="ThemePreview" type="VBoxContainer"]
 anchors_preset = 15
@@ -7,6 +9,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 12
+script = ExtResource("1")
 
 [node name="Title" type="Label" parent="."]
 layout_mode = 2
