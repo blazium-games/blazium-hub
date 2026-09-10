@@ -10,7 +10,7 @@ func _ready() -> void:
 		return
 	if OS.get_name() != "Windows":
 		return
-	get_tree().set_auto_accept_quit(false)
+	call_deferred("_disable_auto_quit")
 	_menu = PopupMenu.new()
 	_menu.name = "TrayMenu"
 	add_child(_menu)
@@ -25,6 +25,12 @@ func _ready() -> void:
 	_indicator.menu = _menu.get_path()
 	add_child(_indicator)
 	_indicator.pressed.connect(_on_indicator_pressed)
+
+
+func _disable_auto_quit() -> void:
+	var tree := get_tree()
+	if tree:
+		tree.set_auto_accept_quit(false)
 
 
 func _notification(what: int) -> void:
@@ -74,8 +80,9 @@ func _on_menu_id(id: int) -> void:
 					HubCli.open_project(path)
 
 
-func _on_indicator_pressed(_mouse_button: int) -> void:
-	_show()
+func _on_indicator_pressed(mouse_button: int, _mouse_position: Vector2 = Vector2.ZERO) -> void:
+	if mouse_button == MOUSE_BUTTON_LEFT:
+		_show()
 
 
 func _show() -> void:

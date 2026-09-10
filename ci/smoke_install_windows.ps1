@@ -158,11 +158,9 @@ Write-Host "Upgrade InstallKind=$kind2 token unchanged"
 Write-Host "=== Seed user markers ==="
 $appData = Join-Path $env:APPDATA "blazium"
 $local = Join-Path $env:LOCALAPPDATA "Blazium"
-$godot = Join-Path $env:APPDATA "Godot\app_userdata\Blazium Hub"
-New-Item -ItemType Directory -Force -Path $appData, $local, $godot | Out-Null
+New-Item -ItemType Directory -Force -Path $appData, $local | Out-Null
 Set-Content -Path (Join-Path $appData "hub.json") -Value "smoke"
 Set-Content -Path (Join-Path $local "marker") -Value "smoke"
-Set-Content -Path (Join-Path $godot "marker") -Value "smoke"
 
 $unins = Get-ChildItem -Path $CustomDir -Filter "unins*.exe" | Select-Object -First 1
 if (-not $unins) { throw "uninstaller not found under $CustomDir" }
@@ -195,6 +193,5 @@ if (Test-Path $appData) { throw "APPDATA\blazium still exists" }
 $commonBlazium = Join-Path $env:PROGRAMDATA "blazium"
 if (Test-Path $commonBlazium) { throw "PROGRAMDATA\blazium still exists" }
 if (Test-Path $local) { throw "LOCALAPPDATA\Blazium still exists" }
-if (Test-Path $godot) { throw "Godot userdata still exists" }
 
 Write-Host "Windows custom-dir install/uninstall smoke OK"

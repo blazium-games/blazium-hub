@@ -13,8 +13,6 @@ wipe_user() {
   [ -n "$uhome" ] || return 0
   [ -d "$uhome" ] || return 0
   rm -rf "$uhome/.config/blazium" "$uhome/.local/share/blazium"
-  rm -rf "$uhome/.local/share/godot/app_userdata/Blazium Hub" 2>/dev/null || true
-  rm -rf "$uhome/.config/godot/app_userdata/Blazium Hub" 2>/dev/null || true
 }
 
 if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then

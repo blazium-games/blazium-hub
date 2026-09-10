@@ -53,7 +53,7 @@ AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\Blazium
-DefaultGroupName={#MyAppName}
+DefaultGroupName=BlaziumHub
 AllowNoIcons=yes
 UsePreviousAppDir=yes
 LicenseFile=..\..\LICENSE
@@ -459,7 +459,7 @@ procedure PersistHubAnalyticsConsent;
 var
   CfgDir, CfgPath, Enabled: string;
 begin
-  CfgDir := ExpandConstant('{userappdata}\Godot\app_userdata\Blazium Hub');
+  CfgDir := ExpandConstant('{userappdata}\Blazium\app_userdata\BlaziumHub');
   CfgPath := CfgDir + '\hub_settings.cfg';
   if WantAnalytics then
     Enabled := 'true'
@@ -469,6 +469,7 @@ begin
   SetIniString('privacy', 'data_collection_decided', 'true', CfgPath);
   SetIniString('privacy', 'data_collection_enabled', Enabled, CfgPath);
   SetIniString('privacy', 'data_collection_anonymous', 'true', CfgPath);
+  RegWriteStringValue(HKEY_LOCAL_MACHINE, BlaziumHubRegKey, 'AnalyticsEnabled', Enabled);
   Log('Wrote Hub analytics consent enabled=' + Enabled + ' path=' + CfgPath);
 end;
 
@@ -520,6 +521,68 @@ begin
   end;
 end;
 
+function CfgAnalyticsDecided(const CfgPath: string): Boolean;
+begin
+  Result := FileExists(CfgPath) and
+    (CompareText(GetIniString('privacy', 'data_collection_decided', '', CfgPath), 'true') = 0);
+end;
+
+function CfgAnalyticsEnabled(const CfgPath: string): Boolean;
+begin
+  Result := CompareText(GetIniString('privacy', 'data_collection_enabled', '', CfgPath), 'true') = 0;
+end;
+
+{ Uninstall cannot use WizardIsTaskSelected. Prefer Hub settings (user may have
+  opted out later), then the AnalyticsEnabled value written at install. }
+function WantUninstallAnalytics: Boolean;
+var
+  BlaziumCfg, RegVal: string;
+begin
+  if CmdLineParamExists('/NOANALYTICS') then
+  begin
+    Result := False;
+    Exit;
+  end;
+  { Runtime user:// (config/name=BlaziumHub). }
+  BlaziumCfg := ExpandConstant('{userappdata}\Blazium\app_userdata\BlaziumHub\hub_settings.cfg');
+  if CfgAnalyticsDecided(BlaziumCfg) then
+  begin
+    Result := CfgAnalyticsEnabled(BlaziumCfg);
+    Exit;
+  end;
+  if RegQueryStringValue(HKEY_LOCAL_MACHINE, BlaziumHubRegKey, 'AnalyticsEnabled', RegVal) then
+  begin
+    Result := CompareText(RegVal, 'true') = 0;
+    Exit;
+  end;
+  Result := False;
+end;
+
+procedure PostAnonymousUninstallEvent;
+var
+  Http: Variant;
+  Body: string;
+begin
+  if not WantUninstallAnalytics then
+  begin
+    Log('Uninstall analytics skipped');
+    Exit;
+  end;
+  Body := '{"event":"hub_uninstalled","anonymous":true,"os":"Windows","arch":"{#MyAppArchLabel}","version":"{#MyAppVersion}","install_kind":"uninstall"}';
+  try
+    Http := CreateOleObject('WinHttp.WinHttpRequest.5.1');
+    Http.Open('POST', 'https://crash.blazium.app/v1/events', False);
+    Http.SetRequestHeader('Content-Type', 'application/json');
+    Http.SetRequestHeader('X-App-Id', 'blazium-hub');
+    Http.SetRequestHeader('X-Build-Id', '{#MyAppVersion}');
+    Http.SetTimeouts(4000, 4000, 4000, 8000);
+    Http.Send(Body);
+    Log('Uninstall analytics WinHTTP status=' + IntToStr(Http.Status) + ' event=hub_uninstalled');
+  except
+    Log('Uninstall analytics POST failed (ignored)');
+  end;
+end;
+
 procedure WipeDir(const Dir: string);
 begin
   if Dir = '' then
@@ -536,6 +599,7 @@ begin
   begin
     EnvRemovePath(ExpandConstant('{app}'));
     RegDeleteValue(HKEY_LOCAL_MACHINE, EnvironmentKey, 'BLAZIUM');
+    PostAnonymousUninstallEvent;
 
     UserAppData := ExpandConstant('{userappdata}');
     LocalAppData := ExpandConstant('{localappdata}');
@@ -543,6 +607,5 @@ begin
     WipeDir(UserAppData + '\blazium');
     WipeDir(CommonAppData + '\blazium');
     WipeDir(LocalAppData + '\Blazium');
-    WipeDir(UserAppData + '\Godot\app_userdata\Blazium Hub');
   end;
 end;

@@ -12,6 +12,7 @@ var data_collection_decided: bool = false
 var data_collection_enabled: bool = false
 var data_collection_anonymous: bool = true
 var favorite_projects: Array[String] = []
+var declined_editor_versions: Array[String] = []
 
 
 func _ready() -> void:
@@ -52,6 +53,15 @@ func load_settings() -> void:
 		for v: Variant in fav_raw:
 			fav_arr.append(str(v))
 	favorite_projects.assign(fav_arr)
+	var declined_raw: Variant = cfg.get_value("updates", "declined_editor_versions", PackedStringArray())
+	var declined_arr: Array = []
+	if typeof(declined_raw) == TYPE_PACKED_STRING_ARRAY:
+		for s: String in declined_raw:
+			declined_arr.append(s)
+	elif typeof(declined_raw) == TYPE_ARRAY:
+		for v: Variant in declined_raw:
+			declined_arr.append(str(v))
+	declined_editor_versions.assign(declined_arr)
 	if HubCli and not cli_path.is_empty():
 		HubCli.set_cli_path(cli_path)
 	_apply_data_collection()
@@ -66,6 +76,7 @@ func save_settings() -> void:
 	cfg.set_value("privacy", "data_collection_enabled", data_collection_enabled)
 	cfg.set_value("privacy", "data_collection_anonymous", data_collection_anonymous)
 	cfg.set_value("projects", "favorite_projects", PackedStringArray(favorite_projects))
+	cfg.set_value("updates", "declined_editor_versions", PackedStringArray(declined_editor_versions))
 	cfg.save(CONFIG_PATH)
 
 
@@ -92,6 +103,24 @@ func set_favorite_project(path: String, favorite: bool) -> void:
 			favorite_projects.append(path)
 	else:
 		favorite_projects.erase(path)
+	save_settings()
+
+
+func get_declined_editor_versions() -> Array:
+	return declined_editor_versions.duplicate()
+
+
+func has_declined_editor_version(version: String) -> bool:
+	return declined_editor_versions.has(version.strip_edges())
+
+
+func add_declined_editor_version(version: String) -> void:
+	var v := version.strip_edges()
+	if v.is_empty() or not HubSanitize.is_valid_version(v):
+		return
+	if declined_editor_versions.has(v):
+		return
+	declined_editor_versions.append(v)
 	save_settings()
 
 

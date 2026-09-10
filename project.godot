@@ -10,9 +10,10 @@ config_version=5
 
 [application]
 
-config/name="Blazium Hub"
+config/name="BlaziumHub"
 config/description="Desktop Hub for Blazium editors and projects (CDN + blazium-cli)."
 config/version="0.1.0"
+config/auto_accept_quit=false
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.3.2", "GL Compatibility")
 run/low_processor_mode=true
