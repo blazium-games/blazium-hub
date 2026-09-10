@@ -47,6 +47,10 @@ mouse_default_cursor_shape = 2
 theme_type_variation = &"FilledButton"
 text = "Scan Folder"
 
+[node name="Spacer" type="Control" parent="."]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
 [node name="ScrollContainer" type="ScrollContainer" parent="."]
 layout_mode = 2
 size_flags_vertical = 3
@@ -69,7 +73,7 @@ text_overrun_behavior = 3
 
 [node name="ProjectFileDialog" type="FileDialog" parent="."]
 unique_name_in_owner = true
-title = "Open project.blazium or project.godot"
+title = "Open a File"
 ok_button_text = "Open"
 file_mode = 0
 access = 2
@@ -79,35 +83,40 @@ use_native_dialog = true
 [node name="NewProjectDialog" type="ConfirmationDialog" parent="."]
 unique_name_in_owner = true
 title = "Create new project"
+size = Vector2i(200, 119)
 ok_button_text = "Create"
 dialog_hide_on_ok = false
 
 [node name="NewProjectForm" type="VBoxContainer" parent="NewProjectDialog"]
-offset_left = 8.0
-offset_top = 8.0
-offset_right = 392.0
-offset_bottom = 80.0
+offset_left = 1.0
+offset_top = 1.0
+offset_right = 199.0
+offset_bottom = 75.0
 theme_override_constants/separation = 8
 
 [node name="NewProjectNameEdit" type="LineEdit" parent="NewProjectDialog/NewProjectForm"]
 unique_name_in_owner = true
+layout_mode = 2
 placeholder_text = "Project name"
 
 [node name="NewProjectPathRow" type="HBoxContainer" parent="NewProjectDialog/NewProjectForm"]
+layout_mode = 2
 theme_override_constants/separation = 8
 
 [node name="NewProjectPathEdit" type="LineEdit" parent="NewProjectDialog/NewProjectForm/NewProjectPathRow"]
 unique_name_in_owner = true
+layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "Project folder"
 
 [node name="BrowseNewProjectBtn" type="Button" parent="NewProjectDialog/NewProjectForm/NewProjectPathRow"]
 unique_name_in_owner = true
+layout_mode = 2
 text = "Browse"
 
 [node name="NewProjectDirDialog" type="FileDialog" parent="."]
 unique_name_in_owner = true
-title = "Select project folder"
+title = "Open a Directory"
 ok_button_text = "Select Current Folder"
 file_mode = 2
 access = 2

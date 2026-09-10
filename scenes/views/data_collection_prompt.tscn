@@ -4,7 +4,9 @@
 
 [node name="DataCollectionPrompt" type="ConfirmationDialog"]
 title = "Help improve Blazium Hub"
+position = Vector2i(0, 36)
 size = Vector2i(480, 254)
+visible = true
 min_size = Vector2i(480, 200)
 ok_button_text = "Allow"
 cancel_button_text = "Decline"
@@ -16,10 +18,10 @@ anchor_left = 0.015
 anchor_top = 0.019
 anchor_right = 0.985
 anchor_bottom = 0.871
-offset_left = 2.6
-offset_top = 3.174
-offset_right = -2.60001
-offset_bottom = -21.234
+offset_left = 1.0
+offset_top = 1.0
+offset_right = 479.0
+offset_bottom = 210.0
 grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 3
