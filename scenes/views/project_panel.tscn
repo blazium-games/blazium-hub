@@ -21,7 +21,7 @@ corner_radius_bottom_left = 8
 [node name="ProjectPanel" type="PanelContainer"]
 self_modulate = Color(1, 1, 1, 0.65098)
 offset_right = 575.0
-offset_bottom = 136.0
+offset_bottom = 75.0
 size_flags_horizontal = 3
 focus_mode = 2
 theme_override_styles/panel = SubResource("StyleBoxFlat_m6xbw")
@@ -36,10 +36,10 @@ theme_override_constants/separation = 8
 
 [node name="ProjectIconMask" type="TextureRect" parent="HBox"]
 clip_children = 2
-custom_minimum_size = Vector2(128, 128)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 texture = ExtResource("2_m6xbw")
-expand_mode = 1
+expand_mode = 2
 
 [node name="ProjectIconTextureRect" type="TextureRect" parent="HBox/ProjectIconMask"]
 unique_name_in_owner = true
@@ -53,24 +53,35 @@ mouse_filter = 2
 texture = ExtResource("1_6x3v3")
 expand_mode = 1
 
-[node name="VBox" type="VBoxContainer" parent="HBox"]
+[node name="VBox" type="HBoxContainer" parent="HBox"]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 mouse_filter = 2
 theme_override_constants/separation = 8
 
-[node name="HBoxContainer2" type="HBoxContainer" parent="HBox/VBox"]
+[node name="VBoxContainer" type="VBoxContainer" parent="HBox/VBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HBoxContainer2" type="VBoxContainer" parent="HBox/VBox/VBoxContainer"]
 layout_mode = 2
 
-[node name="ProjectNameLabel" type="Label" parent="HBox/VBox/HBoxContainer2"]
+[node name="HBoxContainer" type="HBoxContainer" parent="HBox/VBox/VBoxContainer/HBoxContainer2"]
+layout_mode = 2
+size_flags_horizontal = 0
+
+[node name="ProjectNameLabel" type="Label" parent="HBox/VBox/VBoxContainer/HBoxContainer2/HBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 0
 theme_type_variation = &"SmallHeaderLabel"
 text = "Project Name"
 
-[node name="FavoriteButton" type="TextureButton" parent="HBox/VBox/HBoxContainer2"]
+[node name="CenterContainer" type="CenterContainer" parent="HBox/VBox/VBoxContainer/HBoxContainer2/HBoxContainer"]
+layout_mode = 2
+
+[node name="FavoriteButton" type="TextureButton" parent="HBox/VBox/VBoxContainer/HBoxContainer2/HBoxContainer/CenterContainer"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 10
@@ -78,18 +89,22 @@ toggle_mode = true
 texture_normal = ExtResource("5_8c8ro")
 texture_pressed = ExtResource("6_vdu88")
 
-[node name="ProjectPathLabel" type="Label" parent="HBox/VBox"]
+[node name="ProjectPathLabel" type="Label" parent="HBox/VBox/VBoxContainer/HBoxContainer2"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
-theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(1, 1, 1, 0.588235)
+theme_override_font_sizes/font_size = 13
 text = "Path/to/project"
 text_overrun_behavior = 3
 
-[node name="HBoxContainer" type="HBoxContainer" parent="HBox/VBox"]
+[node name="CenterContainer" type="CenterContainer" parent="HBox/VBox"]
 layout_mode = 2
 
-[node name="BlaziumVersionButton" type="OptionButton" parent="HBox/VBox/HBoxContainer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="HBox/VBox/CenterContainer"]
+layout_mode = 2
+
+[node name="BlaziumVersionButton" type="OptionButton" parent="HBox/VBox/CenterContainer/HBoxContainer"]
 unique_name_in_owner = true
 visible = false
 custom_minimum_size = Vector2(200, 0)
@@ -102,7 +117,7 @@ item_count = 1
 popup/item_0/text = "Blazium v0.0.0"
 popup/item_0/id = 0
 
-[node name="OpenProjectButton" type="Button" parent="HBox/VBox/HBoxContainer"]
+[node name="OpenProjectButton" type="Button" parent="HBox/VBox/CenterContainer/HBoxContainer"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(180, 0)
 layout_mode = 2
@@ -111,7 +126,7 @@ mouse_default_cursor_shape = 2
 theme_type_variation = &"FilledButton"
 text = "Open Project"
 
-[node name="ProjectSettingsButton" type="MenuButton" parent="HBox/VBox/HBoxContainer"]
+[node name="ProjectSettingsButton" type="MenuButton" parent="HBox/VBox/CenterContainer/HBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 2

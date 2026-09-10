@@ -1,4 +1,4 @@
-[gd_scene load_steps=27 format=3 uid="uid://cy2ibvtgps8sx"]
+[gd_scene load_steps=26 format=3 uid="uid://cy2ibvtgps8sx"]
 
 [ext_resource type="Script" uid="uid://smaced30rdjb" path="res://scripts/gdscript/main.gd" id="1"]
 [ext_resource type="PackedScene" uid="uid://c5co428sgius1" path="res://scenes/views/projects.tscn" id="2"]
@@ -32,8 +32,6 @@ cellular_distance_function = 1
 seamless = true
 color_ramp = SubResource("Gradient_o6xl0")
 noise = SubResource("FastNoiseLite_tipki")
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_ya4ey"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_o6xl0"]
 content_margin_left = 8.0
@@ -109,9 +107,12 @@ texture = SubResource("NoiseTexture2D_85g3d")
 layout_mode = 2
 theme_override_constants/separation = 0
 
-[node name="PanelContainer" type="PanelContainer" parent="PanelContainer/Root"]
+[node name="PanelContainer" type="MarginContainer" parent="PanelContainer/Root"]
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxEmpty_ya4ey")
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
 
 [node name="HBoxContainer" type="HBoxContainer" parent="PanelContainer/Root/PanelContainer"]
 layout_mode = 2
@@ -147,7 +148,6 @@ theme_override_fonts/font = ExtResource("3_o6xl0")
 theme_override_font_sizes/font_size = 20
 theme_override_styles/focus = SubResource("StyleBoxFlat_o6xl0")
 toggle_mode = true
-button_pressed = true
 button_group = SubResource("ButtonGroup_tbgi4")
 text = "Projects"
 flat = true
@@ -254,10 +254,10 @@ layout_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+text = "Ready"
 autowrap_mode = 3
 clip_text = true
 text_overrun_behavior = 3
-text = "Ready"
 
 [node name="DiscordButton" type="Button" parent="PanelContainer/Root/StatusBar/HBoxContainer"]
 unique_name_in_owner = true
