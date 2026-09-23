@@ -4,6 +4,24 @@ Desktop Hub for [Blazium](https://blazium.app): browse editor builds on the publ
 
 Requires **[blazium-cli](https://github.com/blazium-games/blazium-cli)** for install/open/project mutations (shared `%APPDATA%\blazium\hub.json` / `~/.config/blazium/hub.json`).
 
+## Community
+
+- Official website: [https://blazium.app/](https://blazium.app/)
+- IndieDB blog: [https://www.indiedb.com/engines/blazium-engine](https://www.indiedb.com/engines/blazium-engine)
+- Official community: [Blazium Discord](https://discord.gg/sZaf9KYzDp)
+- Docs: [docs.blazium.app](https://docs.blazium.app)
+
+## Ecosystem
+
+| Product | Role | Release |
+|---------|------|---------|
+| [CLI](https://github.com/blazium-games/blazium-cli) | Install editors, projects, remote control, Steam/itch deploy | Linux and Windows, x86_64 and x86_32. Catalog: [cli.json](https://cdn.blazium.app/cli/cli.json) |
+| [Hub](https://github.com/blazium-games/blazium-hub) | Desktop companion; installers bundle the CLI | Linux and Windows, x86_64 and x86_32. Engine builds track `blazium_4.8` |
+| [Crash reporter](https://github.com/blazium-games/blazium_crash_reporter) | Sidecar UI for engine and Hub crash reports | Linux and Windows, x86_64 and x86_32. Catalog: [crash_reporter.json](https://cdn.blazium.app/crash_reporter/crash_reporter.json). Engine builds track `blazium_4.8` |
+| [Toolchain](https://github.com/blazium-games/blazium-toolchain) | PS1, PS2, N64, and Interactive DVD | Linux and Windows, x86_64 and x86_32. Catalog: [toolchain.json](https://cdn.blazium.app/toolchain/toolchain.json) |
+| [Skills](https://github.com/blazium-games/blazium-skills) | Agent skill packs for Claude, Cursor, Codex, and Grok | Own semver, separate from the 0.6.x API baseline. Catalog: [skills.json](https://cdn.blazium.app/skills/skills.json) |
+| [Subagents](https://github.com/blazium-games/blazium-subagents) | Studio roster that loads those skills | Own semver. Catalog: [subagents.json](https://cdn.blazium.app/subagents/subagents.json) |
+
 ## Features
 
 - **Projects** — list / add / remove / open via `blazium-cli --json`
@@ -56,7 +74,7 @@ Hub is a **2D UI app**. Runtime settings use `gl_compatibility`, low processor m
 
 When editing Hub in a full Blazium editor, import [`config/hub_low_end.profile`](config/hub_low_end.profile) via **Editor → Manage Feature Profiles…** to hide 3D/asset-lib clutter.
 
-**CI builds a custom Blazium editor + `template_release`** from `blazium-games/blazium` at the pin in [`ci/BLAZIUM_REF`](ci/BLAZIUM_REF), using the allowlist in [`ci/hub_scons.env`](ci/hub_scons.env):
+**CI builds a custom Blazium editor + `template_release`** from `blazium-games/blazium` branch `blazium_4.8` (branch tip), for Linux and Windows, x86_64 and x86_32, using the allowlist in [`ci/hub_scons.env`](ci/hub_scons.env). [`ci/BLAZIUM_REF`](ci/BLAZIUM_REF) is only the fallback when resolving the nightly editor used by Autowork:
 
 - `modules_enabled_by_default=no` + GDScript, freetype, text_server_fb, svg, mbedtls, regex, **httpserver**, **remote_control**, **crash_reporter**, **analytics**
 - Export-tool editor: baked `editor_app_id=blazium-hub` (do not pass `--app-id` / `--build-id` to the engine)
@@ -75,7 +93,7 @@ Headless Autowork suites cover Hub GDScript behavior and companion Luau scripts:
 # or: blazium --headless --path . -s run_tests.gd
 ```
 
-CI: [`.github/workflows/autowork.yml`](.github/workflows/autowork.yml) downloads a release Blazium editor (Autowork + Luau) and runs the same entrypoint.
+CI in [`.github/workflows/cicd.yml`](.github/workflows/cicd.yml) downloads the published nightly Linux editor (Autowork + Luau) and runs the same entrypoint. Engine compiles stay on `blazium_4.8`.
 
 ## production.env (admins)
 
@@ -98,7 +116,7 @@ Rotate the key by updating local `production.env` and the `PRODUCTION_ENV` secre
 - **Windows:** Inno Setup — [`packaging/windows/blazium-hub.iss`](packaging/windows/blazium-hub.iss). Requires **admin** (machine-wide `{autopf}\Blazium`, no `/CURRENTUSER`); registers `blazium://` and finish-page options to launch Hub or visit [blazium.app](https://blazium.app).
 - **Linux:** nfpm `.deb` — [`packaging/linux/nfpm.yaml`](packaging/linux/nfpm.yaml) + `x-scheme-handler/blazium`.
 
-CI (`.github/workflows/cicd.yml`): build min engine → export with encryption → SSL.com sign (Windows) → Inno / `.deb` → Spaces `hub/{os}/{version}/` → Cerebro `POST /api/v1/tools` (`type: hub`) → `POST /api/v1/cdn/publish` `{"scope":"hub"}`.
+CI (`.github/workflows/cicd.yml`) builds Linux and Windows installers for x86_64 and x86_32. CDN upload runs only after every required build exists, then signing, then Spaces and Cerebro.
 
 Installers: [cdn.blazium.app](https://cdn.blazium.app) · `/dev-tools/download?tool=hub`.
 

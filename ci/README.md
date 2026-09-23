@@ -2,7 +2,7 @@
 
 | File | Purpose |
 |------|---------|
-| `BLAZIUM_REF` | Pinned `blazium-games/blazium` commit/tag for reproducible builds |
+| `BLAZIUM_REF` | Fallback SHA for the nightly editor resolver. Engine compiles check out branch `blazium_4.8` |
 | `hub_scons.env` | Minimal SCons allowlist (`HUB_SCONS_COMMON` + `HUB_SCONS_EDITOR` + template-only `HUB_SCONS_TEMPLATE`) |
 
 ## Editor vs template
