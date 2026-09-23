@@ -329,6 +329,9 @@ jobs:
               "    # Replace any early-loaded mingw/default tools with MSVC (same as setup_msvc_auto).\n"
           )
           if needle not in text:
+              if 'env["TARGET_ARCH"]' in text and "def setup_msvc_manual" not in text:
+                  print("detect.py already sets TARGET_ARCH; skipping VCVARS patch")
+                  raise SystemExit(0)
               raise SystemExit("detect.py patch anchor not found; update Hub CI patch")
           p.write_text(text.replace(needle, insert, 1), encoding="utf-8")
           print("Patched setup_msvc_manual to set TARGET_ARCH")
