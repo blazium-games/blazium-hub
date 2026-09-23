@@ -19,7 +19,7 @@ Requires **[blazium-cli](https://github.com/blazium-games/blazium-cli)** for ins
 | [Hub](https://github.com/blazium-games/blazium-hub) | Desktop companion; installers bundle the CLI | Linux and Windows, x86_64 and x86_32. Engine builds track `blazium_4.8` |
 | [Crash reporter](https://github.com/blazium-games/blazium_crash_reporter) | Sidecar UI for engine and Hub crash reports | Linux and Windows, x86_64 and x86_32. Catalog: [crash_reporter.json](https://cdn.blazium.app/crash_reporter/crash_reporter.json). Engine builds track `blazium_4.8` |
 | [Toolchain](https://github.com/blazium-games/blazium-toolchain) | PS1, PS2, N64, and Interactive DVD | Linux and Windows, x86_64 and x86_32. Catalog: [toolchain.json](https://cdn.blazium.app/toolchain/toolchain.json) |
-| [Skills](https://github.com/blazium-games/blazium-skills) | Agent skill packs for Claude, Cursor, Codex, and Grok | Own semver, separate from the 0.6.x API baseline. Catalog: [skills.json](https://cdn.blazium.app/skills/skills.json) |
+| [Skills](https://github.com/blazium-games/blazium-skills) | Agent skill packs for Claude, Cursor, Codex, and Grok | Own semver, separate from the 0.8.x API baseline. Catalog: [skills.json](https://cdn.blazium.app/skills/skills.json) |
 | [Subagents](https://github.com/blazium-games/blazium-subagents) | Studio roster that loads those skills | Own semver. Catalog: [subagents.json](https://cdn.blazium.app/subagents/subagents.json) |
 
 ## Features
