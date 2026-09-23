@@ -36,10 +36,30 @@ jobs:
         working-directory: ci
         run: python3 -m unittest discover -v
 
-      - name: Download Blazium editor (nightly, with Autowork + Luau)
+      - name: Download Blazium editor (nightly on blazium_4.8, with Autowork + Luau)
         id: editor
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          ENGINE_OUT="$(python3 ci/resolve_nightly_engine.py --fallback ci/BLAZIUM_REF)"
+          echo "$ENGINE_OUT"
+          SHA="$(printf '%s\n' "$ENGINE_OUT" | sed -n 's/^ref=//p')"
+          test -n "$SHA"
+          STATUS="$(curl -fsSL \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/blazium-games/blazium/compare/${SHA}...blazium_4.8" \
+            | jq -r '.status // empty')"
+          case "$STATUS" in
+            ahead|identical)
+              echo "nightly engine ${SHA} is contained in blazium_4.8"
+              ;;
+            *)
+              echo "nightly engine ${SHA} is not contained in blazium_4.8 (status=${STATUS:-missing})" >&2
+              exit 1
+              ;;
+          esac
           RESOLVED="$(python3 ci/resolve_nightly_editor.py --github-output "$GITHUB_OUTPUT")"
           echo "$RESOLVED"
           VER="$(printf '%s\n' "$RESOLVED" | sed -n 's/^version=//p')"
@@ -79,6 +99,7 @@ jobs:
     outputs:
       version: ${{ steps.hubver.outputs.version }}
       blazium_ref: ${{ steps.ref.outputs.ref }}
+      blazium_sha: ${{ steps.ref.outputs.sha }}
       enc_key_hash: ${{ steps.enc.outputs.hash }}
     steps:
       - uses: actions/checkout@v4
@@ -161,11 +182,15 @@ jobs:
           # Workspace only; local-dev VERSION in git stays as a default.
           printf '%s\n' "$V" > VERSION
 
-      - name: Resolve newest nightly engine
+      - name: Resolve blazium_4.8
         id: ref
         run: |
           set -euo pipefail
-          python3 ci/resolve_nightly_engine.py --fallback ci/BLAZIUM_REF
+          SHA="$(git ls-remote https://github.com/blazium-games/blazium.git refs/heads/blazium_4.8 | awk '{print $1}')"
+          test -n "$SHA"
+          echo "ref=blazium_4.8" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "blazium_4.8 ${SHA}"
 
       - name: Encryption key fingerprint
         id: enc
@@ -254,7 +279,7 @@ jobs:
             FORCE="-force-${{ github.run_id }}"
           fi
           # -pearch2: bust caches from VCVARS path linking x86_32 without /MACHINE:X86 (x64 PE).
-          KEY="hub-engine-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.target }}-${{ needs.resolve-engine.outputs.blazium_ref }}-${{ needs.resolve-engine.outputs.version }}-${{ hashFiles('ci/hub_scons.env') }}-${ENC}-pearch2-id1${FORCE}"
+          KEY="hub-engine-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.target }}-blazium_4.8-${{ needs.resolve-engine.outputs.blazium_sha }}-${{ needs.resolve-engine.outputs.version }}-${{ hashFiles('ci/hub_scons.env') }}-${ENC}-pearch2-id1${FORCE}"
           echo "key=$KEY" >> "$GITHUB_OUTPUT"
           echo "Binary cache key: $KEY"
 
@@ -270,7 +295,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: blazium-games/blazium
-          ref: ${{ needs.resolve-engine.outputs.blazium_ref }}
+          ref: blazium_4.8
           path: .ci/engine
           submodules: recursive
           fetch-depth: 1
@@ -358,7 +383,7 @@ jobs:
           set +a
           mkdir -p .ci/flags
           printf '%s' "$HUB_SCONS_COMMON" > .ci/flags/common.txt
-          printf '%s' "$HUB_SCONS_EDITOR editor_build_id=${{ needs.resolve-engine.outputs.blazium_ref }}" > .ci/flags/editor.txt
+          printf '%s' "$HUB_SCONS_EDITOR editor_build_id=${{ needs.resolve-engine.outputs.blazium_sha }}" > .ci/flags/editor.txt
           printf '%s' "$HUB_SCONS_TEMPLATE template_build_id=${{ needs.resolve-engine.outputs.version }}" > .ci/flags/template.txt
           echo "COMMON: $(cat .ci/flags/common.txt)"
           echo "EDITOR EXTRA: $(cat .ci/flags/editor.txt)"
@@ -657,74 +682,78 @@ jobs:
             ./ci/smoke_install_linux_debinfo.sh "$DEB_PATH"
           fi
 
-      - name: Import GPG and sign
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+      - name: Stage unsigned deb
         run: |
           set -euo pipefail
-          if [ -n "${GPG_PRIVATE_KEY:-}" ]; then
-            echo "$GPG_PRIVATE_KEY" | gpg --batch --import
-            gpg --batch --yes --output "${DEB_PATH}.sig" --detach-sign "$DEB_PATH"
-          fi
-
-      - name: Digest
-        id: digest
-        run: |
-          SHA=$(sha256sum "$DEB_PATH" | awk '{print $1}')
-          SIZE=$(stat -c%s "$DEB_PATH")
-          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
-          echo "size=$SIZE" >> "$GITHUB_OUTPUT"
           mkdir -p "upload/linux/${{ needs.resolve-engine.outputs.version }}"
           cp "$DEB_PATH" "upload/linux/${{ needs.resolve-engine.outputs.version }}/"
-          if [ -f "${DEB_PATH}.sig" ]; then
-            cp "${DEB_PATH}.sig" "upload/linux/${{ needs.resolve-engine.outputs.version }}/"
-          fi
 
       - uses: actions/upload-artifact@v4
         with:
           name: linux-deb-${{ matrix.arch }}
           path: upload/linux/**
 
-      - uses: BetaHuhn/do-spaces-action@v2
-        with:
-          access_key: ${{ secrets.DO_ACCESS_KEY }}
-          secret_key: ${{ secrets.DO_SECRET_KEY }}
-          space_name: ${{ secrets.DO_SPACE_NAME }}
-          space_region: ${{ secrets.DO_SPACE_REGION }}
-          source: upload/linux/${{ needs.resolve-engine.outputs.version }}/${{ env.DEB_NAME }}
-          out_dir: hub/linux/${{ needs.resolve-engine.outputs.version }}
-
-      - name: Register with Cerebro
-        env:
-          URL: https://cdn.blazium.app/hub/linux/${{ needs.resolve-engine.outputs.version }}/${{ env.DEB_NAME }}
-        run: |
-          SIG_URL="${URL}.sig"
-          curl -s -X POST "${{ secrets.CEREBRO_URL }}/api/v1/tools" \
-            -H "Content-Type: application/json" \
-            -H "BLAZIUM_AUTH: ${{ secrets.BLAZIUM_AUTH }}" \
-            -d "$(cat <<EOF
-          {
-            "name": "Blazium Hub",
-            "type": "hub",
-            "version": "${{ needs.resolve-engine.outputs.version }}",
-            "os": "linux",
-            "arch": "${{ matrix.arch }}",
-            "file": "$URL",
-            "sig": "$SIG_URL",
-            "sha256": "${{ steps.digest.outputs.sha256 }}",
-            "size": ${{ steps.digest.outputs.size }},
-            "signing": "gpg",
-            "released_on": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-          }
-          EOF
-          )"
-
       - name: Scrub encryption key material
         if: always()
         run: rm -f production.env .ci/export_encryption.key
 
-  # Windows Authenticode (sslcom-code-signer) is a Linux container action.
-  # Flow: export (Win) → sign bins (Linux) → ISCC (Win) → sign setup (Linux) → smoke/CDN (Win).
+  validate:
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
+    needs: [resolve-engine, export-linux, export-windows]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '{linux-deb-*,windows-package-unsigned-*}'
+          path: artifacts
+          merge-multiple: false
+
+      - name: Require Linux and Windows exports
+        run: |
+          set -euo pipefail
+          test "$(find artifacts -type f -name '*.deb' | wc -l)" -eq 2
+          test "$(find artifacts -type f -name 'BlaziumHub.exe' | wc -l)" -eq 2
+          find artifacts -type f -name '*.deb' -o -name 'BlaziumHub.exe' | sort
+
+  sign-linux:
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
+    needs: [resolve-engine, validate]
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x86_64, x86_32]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-deb-${{ matrix.arch }}
+          path: upload/linux
+
+      - name: GPG sign deb
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y gnupg
+          DEB="$(find upload/linux -type f -name '*.deb' | head -n1)"
+          test -n "$DEB"
+          test -f "$DEB"
+          if [ -n "${GPG_PRIVATE_KEY:-}" ]; then
+            echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+            gpg --batch --yes --output "${DEB}.sig" --detach-sign "$DEB"
+          fi
+          test -f "${DEB}.sig"
+          echo "DEB_PATH=$DEB" >> "$GITHUB_ENV"
+          echo "DEB_NAME=$(basename "$DEB")" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb-signed-${{ matrix.arch }}
+          path: upload/linux/**
+
+  # Windows Authenticode runs only after validate confirms every export exists.
+  # Flow: validate → sign bins → ISCC → sign setup → smoke → CDN.
   export-windows:
     if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
     needs: [resolve-engine, build-engine]
@@ -876,7 +905,7 @@ jobs:
 
   sign-windows-binaries:
     if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
-    needs: [resolve-engine, export-windows]
+    needs: [resolve-engine, validate]
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     strategy:
@@ -903,6 +932,7 @@ jobs:
 
       - uses: bioblaze/sslcom-code-signer@v6
         name: Sign BlaziumHub.exe
+        continue-on-error: true
         with:
           command: sign
           username: ${{ secrets.ES_USERNAME }}
@@ -915,6 +945,7 @@ jobs:
 
       - uses: bioblaze/sslcom-code-signer@v6
         name: Sign blazium-cli.exe
+        continue-on-error: true
         with:
           command: sign
           username: ${{ secrets.ES_USERNAME }}
@@ -927,6 +958,7 @@ jobs:
 
       - uses: bioblaze/sslcom-code-signer@v6
         name: Sign crash_reporter.exe
+        continue-on-error: true
         with:
           command: sign
           username: ${{ secrets.ES_USERNAME }}
@@ -940,12 +972,18 @@ jobs:
       - name: Replace package tree with signed binaries
         run: |
           set -euo pipefail
-          test -f signed/Hub/BlaziumHub.exe
-          test -f signed/cli/blazium-cli.exe
-          test -f signed/crash_reporter/crash_reporter.exe
-          cp -f signed/Hub/BlaziumHub.exe build/package/windows/Hub/BlaziumHub.exe
-          cp -f signed/cli/blazium-cli.exe build/package/windows/blazium-cli.exe
-          cp -f signed/crash_reporter/crash_reporter.exe build/package/windows/Hub/crash_reporter.exe
+          copy_or_keep() {
+            local signed="$1" dest="$2"
+            if [ -f "$signed" ]; then
+              cp -f "$signed" "$dest"
+            else
+              echo "signing missing for ${dest}; keeping unsigned binary" >&2
+              test -f "$dest"
+            fi
+          }
+          copy_or_keep signed/Hub/BlaziumHub.exe build/package/windows/Hub/BlaziumHub.exe
+          copy_or_keep signed/cli/blazium-cli.exe build/package/windows/blazium-cli.exe
+          copy_or_keep signed/crash_reporter/crash_reporter.exe build/package/windows/Hub/crash_reporter.exe
           test "$(stat -c%s build/package/windows/Hub/BlaziumHub.exe)" -ge 1048576
           test "$(stat -c%s build/package/windows/blazium-cli.exe)" -ge 1048576
           test "$(stat -c%s build/package/windows/Hub/crash_reporter.exe)" -ge 1048576
@@ -1069,6 +1107,7 @@ jobs:
 
       - uses: bioblaze/sslcom-code-signer@v6
         name: Sign installer
+        continue-on-error: true
         with:
           command: sign
           username: ${{ secrets.ES_USERNAME }}
@@ -1085,6 +1124,10 @@ jobs:
           VER="${{ needs.resolve-engine.outputs.version }}"
           NAME="${{ steps.setup.outputs.name }}"
           SIGNED="signed/setup/${NAME}"
+          if [ ! -f "$SIGNED" ]; then
+            echo "installer signing failed; keeping unsigned setup" >&2
+            cp "$SETUP" "$SIGNED"
+          fi
           test -f "$SIGNED"
           test "$(stat -c%s "$SIGNED")" -ge 1048576
           mkdir -p "upload/windows/${VER}"
@@ -1132,14 +1175,57 @@ jobs:
         run: |
           ./ci/smoke_install_windows.ps1 -SetupPath "$env:SETUP_PATH"
 
-      - name: Digest installer
-        id: digest
-        shell: bash
+  publish:
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
+    needs: [resolve-engine, publish-windows, sign-linux]
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ needs.resolve-engine.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-deb-signed-x86_64
+          path: linux/x86_64
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-deb-signed-x86_32
+          path: linux/x86_32
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-installer-x86_64
+          path: windows/x86_64
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-installer-x86_32
+          path: windows/x86_32
+
+      - name: Require every installer
+        id: files
         run: |
-          SHA=$(sha256sum "$SETUP_PATH" | awk '{print $1}')
-          SIZE=$(wc -c < "$SETUP_PATH" | tr -d ' ')
-          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
-          echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          VER="${{ needs.resolve-engine.outputs.version }}"
+          find_one() {
+            local pattern="$1"
+            local found
+            found="$(find . -type f -name "$pattern" | head -n1)"
+            test -n "$found"
+            echo "$found"
+          }
+          DEB64="$(find_one 'blazium-hub_*_amd64.deb')"
+          DEB32="$(find_one 'blazium-hub_*_i386.deb')"
+          test -f "${DEB64}.sig"
+          test -f "${DEB32}.sig"
+          EXE64="$(find_one "BlaziumHub-Setup-${VER}-x86_64.exe")"
+          EXE32="$(find_one "BlaziumHub-Setup-${VER}-x86_32.exe")"
+          {
+            echo "deb64=$DEB64"
+            echo "deb32=$DEB32"
+            echo "exe64=$EXE64"
+            echo "exe32=$EXE32"
+          } >> "$GITHUB_OUTPUT"
 
       - uses: BetaHuhn/do-spaces-action@v2
         with:
@@ -1147,41 +1233,96 @@ jobs:
           secret_key: ${{ secrets.DO_SECRET_KEY }}
           space_name: ${{ secrets.DO_SPACE_NAME }}
           space_region: ${{ secrets.DO_SPACE_REGION }}
-          source: upload/windows/${{ needs.resolve-engine.outputs.version }}/${{ env.SETUP_NAME }}
+          source: ${{ steps.files.outputs.deb64 }}
+          out_dir: hub/linux/${{ needs.resolve-engine.outputs.version }}
+
+      - uses: BetaHuhn/do-spaces-action@v2
+        with:
+          access_key: ${{ secrets.DO_ACCESS_KEY }}
+          secret_key: ${{ secrets.DO_SECRET_KEY }}
+          space_name: ${{ secrets.DO_SPACE_NAME }}
+          space_region: ${{ secrets.DO_SPACE_REGION }}
+          source: ${{ steps.files.outputs.deb64 }}.sig
+          out_dir: hub/linux/${{ needs.resolve-engine.outputs.version }}
+
+      - uses: BetaHuhn/do-spaces-action@v2
+        with:
+          access_key: ${{ secrets.DO_ACCESS_KEY }}
+          secret_key: ${{ secrets.DO_SECRET_KEY }}
+          space_name: ${{ secrets.DO_SPACE_NAME }}
+          space_region: ${{ secrets.DO_SPACE_REGION }}
+          source: ${{ steps.files.outputs.deb32 }}
+          out_dir: hub/linux/${{ needs.resolve-engine.outputs.version }}
+
+      - uses: BetaHuhn/do-spaces-action@v2
+        with:
+          access_key: ${{ secrets.DO_ACCESS_KEY }}
+          secret_key: ${{ secrets.DO_SECRET_KEY }}
+          space_name: ${{ secrets.DO_SPACE_NAME }}
+          space_region: ${{ secrets.DO_SPACE_REGION }}
+          source: ${{ steps.files.outputs.deb32 }}.sig
+          out_dir: hub/linux/${{ needs.resolve-engine.outputs.version }}
+
+      - uses: BetaHuhn/do-spaces-action@v2
+        with:
+          access_key: ${{ secrets.DO_ACCESS_KEY }}
+          secret_key: ${{ secrets.DO_SECRET_KEY }}
+          space_name: ${{ secrets.DO_SPACE_NAME }}
+          space_region: ${{ secrets.DO_SPACE_REGION }}
+          source: ${{ steps.files.outputs.exe64 }}
+          out_dir: hub/windows/${{ needs.resolve-engine.outputs.version }}
+
+      - uses: BetaHuhn/do-spaces-action@v2
+        with:
+          access_key: ${{ secrets.DO_ACCESS_KEY }}
+          secret_key: ${{ secrets.DO_SECRET_KEY }}
+          space_name: ${{ secrets.DO_SPACE_NAME }}
+          space_region: ${{ secrets.DO_SPACE_REGION }}
+          source: ${{ steps.files.outputs.exe32 }}
           out_dir: hub/windows/${{ needs.resolve-engine.outputs.version }}
 
       - name: Register with Cerebro
-        shell: bash
         env:
-          URL: https://cdn.blazium.app/hub/windows/${{ needs.resolve-engine.outputs.version }}/${{ env.SETUP_NAME }}
+          VER: ${{ needs.resolve-engine.outputs.version }}
         run: |
-          curl -s -X POST "${{ secrets.CEREBRO_URL }}/api/v1/tools" \
-            -H "Content-Type: application/json" \
-            -H "BLAZIUM_AUTH: ${{ secrets.BLAZIUM_AUTH }}" \
-            -d "$(cat <<EOF
+          set -euo pipefail
+          register() {
+            local name="$1" os="$2" arch="$3" file="$4" signing="$5"
+            local base
+            base="$(basename "$file")"
+            local url="https://cdn.blazium.app/hub/${os}/${VER}/${base}"
+            local sig=""
+            if [[ "$signing" == "gpg" ]]; then
+              sig="${url}.sig"
+            fi
+            local sha size
+            sha=$(sha256sum "$file" | awk '{print $1}')
+            size=$(stat -c%s "$file")
+            curl -fsS -X POST "${{ secrets.CEREBRO_URL }}/api/v1/tools" \
+              -H "Content-Type: application/json" \
+              -H "BLAZIUM_AUTH: ${{ secrets.BLAZIUM_AUTH }}" \
+              -d "$(cat <<EOF
           {
             "name": "Blazium Hub",
             "type": "hub",
-            "version": "${{ needs.resolve-engine.outputs.version }}",
-            "os": "windows",
-            "arch": "${{ matrix.arch }}",
-            "file": "$URL",
-            "sig": "",
-            "sha256": "${{ steps.digest.outputs.sha256 }}",
-            "size": ${{ steps.digest.outputs.size }},
-            "signing": "sslcom",
+            "version": "${VER}",
+            "os": "${os}",
+            "arch": "${arch}",
+            "file": "${url}",
+            "sig": "${sig}",
+            "sha256": "${sha}",
+            "size": ${size},
+            "signing": "${signing}",
             "released_on": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
           }
           EOF
           )"
+          }
+          register "Blazium Hub" linux x86_64 "${{ steps.files.outputs.deb64 }}" gpg
+          register "Blazium Hub" linux x86_32 "${{ steps.files.outputs.deb32 }}" gpg
+          register "Blazium Hub" windows x86_64 "${{ steps.files.outputs.exe64 }}" sslcom
+          register "Blazium Hub" windows x86_32 "${{ steps.files.outputs.exe32 }}" sslcom
 
-  publish-catalog:
-    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
-    needs: [resolve-engine, publish-windows, export-linux]
-    runs-on: ubuntu-22.04
-    outputs:
-      version: ${{ needs.resolve-engine.outputs.version }}
-    steps:
       - name: Republish Hub catalog via Cerebro
         run: |
           set -euo pipefail
@@ -1192,7 +1333,7 @@ jobs:
 
   github-release:
     if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') }}
-    needs: [resolve-engine, publish-catalog, export-linux, publish-windows]
+    needs: [resolve-engine, publish]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -1206,7 +1347,7 @@ jobs:
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             V="${GITHUB_REF#refs/tags/v}"
           else
-            V="${{ needs.publish-catalog.outputs.version }}"
+            V="${{ needs.publish.outputs.version }}"
           fi
           test -n "$V"
           echo "version=$V" >> "$GITHUB_OUTPUT"
@@ -1215,7 +1356,7 @@ jobs:
       - name: Download all Hub installers
         uses: actions/download-artifact@v4
         with:
-          pattern: '{linux-deb-*,windows-installer-*}'
+          pattern: '{linux-deb-signed-*,windows-installer-*}'
           path: artifacts
           merge-multiple: true
 
