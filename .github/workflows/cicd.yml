@@ -369,7 +369,7 @@ jobs:
 
       - name: Install SCons
         if: steps.bin-cache.outputs.cache-hit != 'true'
-        run: pip install scons==4.7.0
+        run: pip install scons==4.10.1
 
       - uses: ilammy/msvc-dev-cmd@v1
         if: steps.bin-cache.outputs.cache-hit != 'true' && runner.os == 'Windows'
