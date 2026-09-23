@@ -935,7 +935,8 @@ jobs:
           test -s build/package/windows/Hub/crash_reporter.version
           test -s build/package/windows/VERSION
           test -s build/package/windows/Hub/VERSION
-          mkdir -p signed/Hub signed/cli signed/crash_reporter
+          # CLI and crash_reporter are already signed in their own repos. Do not re-sign them.
+          mkdir -p signed/Hub
           ls -lh build/package/windows/ build/package/windows/Hub/
 
       - uses: bioblaze/sslcom-code-signer@v6
@@ -951,47 +952,15 @@ jobs:
           output_path: ./signed/Hub
           environment_name: PROD
 
-      - uses: bioblaze/sslcom-code-signer@v6
-        name: Sign blazium-cli.exe
-        continue-on-error: true
-        with:
-          command: sign
-          username: ${{ secrets.ES_USERNAME }}
-          password: ${{ secrets.ES_PASSWORD }}
-          credential_id: ${{ secrets.CREDENTIAL_ID }}
-          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
-          file_path: ./build/package/windows/blazium-cli.exe
-          output_path: ./signed/cli
-          environment_name: PROD
-
-      - uses: bioblaze/sslcom-code-signer@v6
-        name: Sign crash_reporter.exe
-        continue-on-error: true
-        with:
-          command: sign
-          username: ${{ secrets.ES_USERNAME }}
-          password: ${{ secrets.ES_PASSWORD }}
-          credential_id: ${{ secrets.CREDENTIAL_ID }}
-          totp_secret: ${{ secrets.ES_TOTP_SECRET }}
-          file_path: ./build/package/windows/Hub/crash_reporter.exe
-          output_path: ./signed/crash_reporter
-          environment_name: PROD
-
-      - name: Replace package tree with signed binaries
+      - name: Replace Hub exe with signed binary
         run: |
           set -euo pipefail
-          copy_or_keep() {
-            local signed="$1" dest="$2"
-            if [ -f "$signed" ]; then
-              cp -f "$signed" "$dest"
-            else
-              echo "signing missing for ${dest}; keeping unsigned binary" >&2
-              test -f "$dest"
-            fi
-          }
-          copy_or_keep signed/Hub/BlaziumHub.exe build/package/windows/Hub/BlaziumHub.exe
-          copy_or_keep signed/cli/blazium-cli.exe build/package/windows/blazium-cli.exe
-          copy_or_keep signed/crash_reporter/crash_reporter.exe build/package/windows/Hub/crash_reporter.exe
+          if [ -f signed/Hub/BlaziumHub.exe ]; then
+            cp -f signed/Hub/BlaziumHub.exe build/package/windows/Hub/BlaziumHub.exe
+          else
+            echo "signing missing for BlaziumHub.exe; keeping unsigned binary" >&2
+            test -f build/package/windows/Hub/BlaziumHub.exe
+          fi
           test "$(stat -c%s build/package/windows/Hub/BlaziumHub.exe)" -ge 1048576
           test "$(stat -c%s build/package/windows/blazium-cli.exe)" -ge 1048576
           test "$(stat -c%s build/package/windows/Hub/crash_reporter.exe)" -ge 1048576
@@ -1031,9 +1000,9 @@ jobs:
           $ErrorActionPreference = "Stop"
           $ver = "${{ needs.resolve-engine.outputs.version }}"
           $arch = "${{ matrix.arch }}"
-          if (-not (Test-Path "build\package\windows\Hub\BlaziumHub.exe")) { throw "Missing signed Hub exe" }
-          if (-not (Test-Path "build\package\windows\blazium-cli.exe")) { throw "Missing signed CLI exe" }
-          if (-not (Test-Path "build\package\windows\Hub\crash_reporter.exe")) { throw "Missing signed crash_reporter exe" }
+          if (-not (Test-Path "build\package\windows\Hub\BlaziumHub.exe")) { throw "Missing Hub exe" }
+          if (-not (Test-Path "build\package\windows\blazium-cli.exe")) { throw "Missing CLI exe" }
+          if (-not (Test-Path "build\package\windows\Hub\crash_reporter.exe")) { throw "Missing crash_reporter exe" }
           $src = (Resolve-Path "build\package\windows").Path
           $ico = "packaging\windows\blazium-hub.ico"
           $magickExe = $null
