@@ -30,7 +30,7 @@ jobs:
     env:
       HUB_AUTOWORK: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Test nightly resolver
         working-directory: ci
@@ -101,7 +101,7 @@ jobs:
       blazium_sha: ${{ steps.ref.outputs.sha }}
       enc_key_hash: ${{ steps.enc.outputs.hash }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Get Version with Bioblaze/game-semver-action
         uses: Bioblaze/game-semver-action@v10
@@ -263,7 +263,7 @@ jobs:
             target: template_release
             msvc_arch: x86
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Cache key suffix
         id: cachekey
@@ -277,22 +277,22 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.force_engine_rebuild }}" == "true" ]]; then
             FORCE="-force-${{ github.run_id }}"
           fi
-          # -pearch3: bust the MSVC x86_32 template that was linked with lto=full (/LTCG)
-          # and segfaulted at startup (exit 139) after the PhysicsServer2D dummy fallback.
-          KEY="hub-engine-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.target }}-blazium_4.8-${{ needs.resolve-engine.outputs.blazium_sha }}-${{ needs.resolve-engine.outputs.version }}-${{ hashFiles('ci/hub_scons.env') }}-${ENC}-pearch3-msvc32-nolto${FORCE}"
+          # -clang32-msdf: Windows x86_32 template is clang-cl (use_llvm=yes, lto=none).
+          # MSVC x86 still segfaults after PhysicsServer2D init when linked without /LTCG.
+          KEY="hub-engine-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.target }}-blazium_4.8-${{ needs.resolve-engine.outputs.blazium_sha }}-${{ needs.resolve-engine.outputs.version }}-${{ hashFiles('ci/hub_scons.env') }}-${ENC}-clang32-msdf${FORCE}"
           echo "key=$KEY" >> "$GITHUB_OUTPUT"
           echo "Binary cache key: $KEY"
 
       - name: Restore binary cache
         id: bin-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: .ci/out
           key: ${{ steps.cachekey.outputs.key }}
 
       - name: Checkout blazium engine
         if: steps.bin-cache.outputs.cache-hit != 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: blazium-games/blazium
           ref: blazium_4.8
@@ -444,14 +444,14 @@ jobs:
             unset SCRIPT_AES256_ENCRYPTION_KEY || true
             EXTRA="$(cat ../flags/editor.txt)"
           fi
-          # Blazium setup_msvc_manual (VCVARS path) never sets SCons TARGET_ARCH, so MSVC
-          # link.exe defaults to x64 PE even when cl.exe is HostX86\x86. Force /MACHINE:X86.
-          # MSVC /LTCG (lto=full) miscompiles that x86_32 template: the export starts,
-          # prints the PhysicsServer2D dummy warning, then exits 139. GCC x86_32 keeps lto=full.
+          # Blazium setup_msvc_manual (VCVARS path) never sets SCons TARGET_ARCH, so the
+          # linker defaults to x64 PE even when the compiler is x86. Force /MACHINE:X86.
+          # MSVC x86 (with or without /LTCG) segfaults that template after PhysicsServer2D
+          # init. clang-cl keeps 16-byte stack alignment. GCC x86_32 keeps lto=full.
           LINK_EXTRA=""
           if [[ "${{ matrix.platform }}" == "windows" && "${{ matrix.arch }}" == "x86_32" ]]; then
             if [[ "${{ matrix.target }}" == "template_release" ]]; then
-              EXTRA="$EXTRA lto=none"
+              EXTRA="$EXTRA lto=none use_llvm=yes"
             fi
             LINK_EXTRA='linkflags=/MACHINE:X86'
             if [[ -n "${LIB:-}" ]]; then
@@ -474,7 +474,7 @@ jobs:
           TARGET="${{ matrix.target }}"
           ARCH="${{ matrix.arch }}"
           if [[ "${{ matrix.platform }}" == "windows" ]]; then
-            BIN=$(find .ci/engine/bin -maxdepth 1 -type f -name "blazium.*.${TARGET}.${ARCH}.exe" ! -name '*.console.exe' | head -n1)
+            BIN=$(find .ci/engine/bin -maxdepth 1 -type f \( -name "blazium.*.${TARGET}.${ARCH}.exe" -o -name "blazium.*.${TARGET}.${ARCH}.llvm.exe" \) ! -name '*.console.exe' | head -n1)
             OUT=".ci/out/${TARGET}.exe"
             MIN=10485760
             if [[ "$TARGET" == "template_release" ]]; then MIN=5242880; fi
@@ -510,7 +510,7 @@ jobs:
           fi
           echo "Restored ${{ matrix.platform }}/${{ matrix.arch }}/${{ matrix.target }} from binary cache"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: engine-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.target }}
           path: .ci/out/
@@ -532,14 +532,14 @@ jobs:
     outputs:
       version: ${{ needs.resolve-engine.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: engine-linuxbsd-x86_64-editor
           path: .ci/out/linux-editor
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: engine-linuxbsd-${{ matrix.arch }}-template_release
           path: .ci/out/linux-template
@@ -627,6 +627,7 @@ jobs:
           SCRIPT_ENCRYPTION_KEY="$(tr -d '[:space:]' < "$GITHUB_WORKSPACE/.ci/export_encryption.key")"
           export GODOT_SCRIPT_ENCRYPTION_KEY="$SCRIPT_ENCRYPTION_KEY"
           mkdir -p build/linux
+          .ci/out/linux/editor --headless --path . --import
           .ci/out/linux/editor --headless --path . --export-release "$PRESET" "$OUT"
           chmod +x "$OUT"
           echo "HUB_BIN=$OUT" >> "$GITHUB_ENV"
@@ -696,7 +697,7 @@ jobs:
           mkdir -p "upload/linux/${{ needs.resolve-engine.outputs.version }}"
           cp "$DEB_PATH" "upload/linux/${{ needs.resolve-engine.outputs.version }}/"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-deb-${{ matrix.arch }}
           path: upload/linux/**
@@ -710,7 +711,7 @@ jobs:
     needs: [resolve-engine, export-linux, export-windows]
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: '{linux-deb-*,windows-package-unsigned-*}'
           path: artifacts
@@ -732,7 +733,7 @@ jobs:
       matrix:
         arch: [x86_64, x86_32]
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: linux-deb-${{ matrix.arch }}
           path: upload/linux
@@ -755,7 +756,7 @@ jobs:
           echo "DEB_PATH=$DEB" >> "$GITHUB_ENV"
           echo "DEB_NAME=$(basename "$DEB")" >> "$GITHUB_ENV"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: linux-deb-signed-${{ matrix.arch }}
           path: upload/linux/**
@@ -772,14 +773,14 @@ jobs:
       matrix:
         arch: [x86_64, x86_32]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: engine-windows-x86_64-editor
           path: .ci/out/windows-editor
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: engine-windows-${{ matrix.arch }}-template_release
           path: .ci/out/windows-template
@@ -871,12 +872,39 @@ jobs:
           SCRIPT_ENCRYPTION_KEY="$(tr -d '[:space:]' < "$GITHUB_WORKSPACE/.ci/export_encryption.key")"
           export GODOT_SCRIPT_ENCRYPTION_KEY="$SCRIPT_ENCRYPTION_KEY"
           mkdir -p build/windows
+          .ci/out/windows/editor.exe --headless --path . --import
           .ci/out/windows/editor.exe --headless --path . --export-release "$PRESET" "$OUT"
           test -f "$OUT"
           cp "$OUT" build/windows/BlaziumHub.exe
           echo "### Hub Windows ${ARCH}" >> "$GITHUB_STEP_SUMMARY"
           ls -lh "$OUT" >> "$GITHUB_STEP_SUMMARY"
+          set +e
           build/windows/BlaziumHub.exe --headless --self-test --quit
+          rc=$?
+          set -e
+          if [[ "$rc" -ne 0 && "$ARCH" == "x86_32" ]]; then
+            CDB=""
+            for candidate in \
+              "/c/Program Files (x86)/Windows Kits/10/Debuggers/x86/cdb.exe" \
+              "/c/Program Files/Windows Kits/10/Debuggers/x86/cdb.exe"
+            do
+              if [[ -f "$candidate" ]]; then
+                CDB="$candidate"
+                break
+              fi
+            done
+            if [[ -n "$CDB" ]]; then
+              echo "self-test exit ${rc}; capturing stack with ${CDB}" >&2
+              "$CDB" -g -G -c "sxe av; g; k 40; q" -logo "$RUNNER_TEMP/cdb-x86-self-test.log" \
+                build/windows/BlaziumHub.exe -- --headless --self-test --quit || true
+              cat "$RUNNER_TEMP/cdb-x86-self-test.log" || true
+            else
+              echo "cdb.exe not found; self-test exit ${rc}" >&2
+            fi
+          fi
+          if [[ "$rc" -ne 0 ]]; then
+            exit "$rc"
+          fi
 
       - name: Fetch matching-arch blazium-cli + crash_reporter + stage package tree
         shell: bash
@@ -901,7 +929,7 @@ jobs:
           ls -lh build/package/windows/ build/package/windows/Hub/
           build/package/windows/Hub/BlaziumHub.exe --headless --self-test --quit
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-package-unsigned-${{ matrix.arch }}
           path: build/package/windows/**
@@ -921,7 +949,7 @@ jobs:
       matrix:
         arch: [x86_64, x86_32]
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: windows-package-unsigned-${{ matrix.arch }}
           path: build/package/windows
@@ -966,7 +994,7 @@ jobs:
           test "$(stat -c%s build/package/windows/Hub/crash_reporter.exe)" -ge 1048576
           ls -lh build/package/windows/ build/package/windows/Hub/
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-package-signed-bins-${{ matrix.arch }}
           path: build/package/windows/**
@@ -981,9 +1009,9 @@ jobs:
       matrix:
         arch: [x86_64, x86_32]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: windows-package-signed-bins-${{ matrix.arch }}
           path: build/package/windows
@@ -1049,7 +1077,7 @@ jobs:
           if (-not (Test-Path $setup)) { throw "Missing $setup" }
           Get-ChildItem "packaging\windows\Output" | Format-Table Name, Length
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-setup-unsigned-${{ matrix.arch }}
           path: packaging/windows/Output/BlaziumHub-Setup-${{ needs.resolve-engine.outputs.version }}-${{ matrix.arch }}.exe
@@ -1064,7 +1092,7 @@ jobs:
       matrix:
         arch: [x86_64, x86_32]
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: windows-setup-unsigned-${{ matrix.arch }}
           path: packaging/windows/Output
@@ -1111,7 +1139,7 @@ jobs:
           cp "$SIGNED" "upload/windows/${VER}/"
           ls -lh "upload/windows/${VER}/"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-installer-${{ matrix.arch }}
           path: upload/windows/**
@@ -1126,9 +1154,9 @@ jobs:
       matrix:
         arch: [x86_64, x86_32]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: windows-installer-${{ matrix.arch }}
           path: upload/windows
@@ -1159,22 +1187,22 @@ jobs:
     outputs:
       version: ${{ needs.resolve-engine.outputs.version }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: linux-deb-signed-x86_64
           path: linux/x86_64
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: linux-deb-signed-x86_32
           path: linux/x86_32
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: windows-installer-x86_64
           path: windows/x86_64
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: windows-installer-x86_32
           path: windows/x86_32
@@ -1315,7 +1343,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Resolve version
         id: ver
@@ -1331,7 +1359,7 @@ jobs:
           echo "tag=v$V" >> "$GITHUB_OUTPUT"
 
       - name: Download all Hub installers
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: '{linux-deb-signed-*,windows-installer-*}'
           path: artifacts

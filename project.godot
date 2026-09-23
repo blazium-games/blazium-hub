@@ -81,6 +81,11 @@ theme/custom_font="uid://by4oenhqm5ind"
 theme/default_font_multichannel_signed_distance_field=true
 theme/custom="uid://57b1m6dp53ek"
 
+[physics]
+
+2d/physics_engine="Dummy"
+3d/physics_engine="Dummy"
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"
