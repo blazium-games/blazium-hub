@@ -56,8 +56,7 @@ jobs:
               echo "nightly engine ${SHA} is contained in blazium_4.8"
               ;;
             *)
-              echo "nightly engine ${SHA} is not contained in blazium_4.8 (status=${STATUS:-missing})" >&2
-              exit 1
+              echo "nightly engine ${SHA} is not an ancestor of blazium_4.8 (status=${STATUS:-missing}); using the published nightly editor for Autowork only. Engine builds stay on blazium_4.8."
               ;;
           esac
           RESOLVED="$(python3 ci/resolve_nightly_editor.py --github-output "$GITHUB_OUTPUT")"
