@@ -960,9 +960,25 @@ jobs:
           $manifest = Join-Path $env:RUNNER_TEMP "BlaziumHub.manifest"
           & $mt.FullName -nologo "-inputresource:$exe;#1" "-out:$manifest"
           if ($LASTEXITCODE -ne 0) { throw "mt.exe failed to extract manifest ($LASTEXITCODE)" }
-          $text = [System.IO.File]::ReadAllText($manifest)
-          if ($text -notmatch 'level="asInvoker"') { throw "packaged Hub manifest has no asInvoker execution level" }
-          $text = $text.Replace('level="asInvoker"', 'level="requireAdministrator"')
+          # mt.exe writes UTF-16. ReadAllText misses asInvoker when the file has no BOM.
+          $bytes = [System.IO.File]::ReadAllBytes($manifest)
+          $text = $null
+          if ($bytes.Length -ge 2 -and $bytes[0] -eq 0xFF -and $bytes[1] -eq 0xFE) {
+            $text = [System.Text.Encoding]::Unicode.GetString($bytes)
+          } elseif ($bytes.Length -ge 2 -and $bytes[0] -eq 0xFE -and $bytes[1] -eq 0xFF) {
+            $text = [System.Text.Encoding]::BigEndianUnicode.GetString($bytes)
+          } elseif ($bytes.Length -ge 4 -and $bytes[1] -eq 0 -and $bytes[3] -eq 0) {
+            $text = [System.Text.Encoding]::Unicode.GetString($bytes)
+          } else {
+            $text = [System.Text.Encoding]::UTF8.GetString($bytes)
+          }
+          if ($text -notmatch 'asInvoker') {
+            $preview = ($text -replace '[^\x09\x0A\x0D\x20-\x7E]', '?')
+            if ($preview.Length -gt 400) { $preview = $preview.Substring(0, 400) }
+            Write-Host "Manifest preview: $preview"
+            throw "packaged Hub manifest has no asInvoker execution level"
+          }
+          $text = [regex]::Replace($text, 'asInvoker', 'requireAdministrator')
           $utf8 = New-Object System.Text.UTF8Encoding $false
           [System.IO.File]::WriteAllText($manifest, $text, $utf8)
           & $mt.FullName -nologo "-manifest" $manifest "-outputresource:$exe;#1"
