@@ -46,7 +46,9 @@ func _exit_tree() -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_PREDELETE:
+	# Close-to-tray hides the window on WM_CLOSE_REQUEST and keeps this process.
+	# Releasing the port there lets the next desktop launch start a second Hub.
+	if what == NOTIFICATION_PREDELETE:
 		_release_lock()
 
 
