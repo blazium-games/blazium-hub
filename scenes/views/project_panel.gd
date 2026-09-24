@@ -3,6 +3,7 @@ class_name ProjectPanel
 extends PanelContainer
 
 signal open_project(_path: String)
+signal run_project(_path: String)
 signal remove_project(_path: String)
 signal favorite_changed(_path: String, favorite: bool)
 
@@ -32,6 +33,7 @@ var busy: bool = false:
 		busy = v
 		if is_node_ready():
 			open_project_button.disabled = busy
+			run_project_button.disabled = busy
 			project_settings_button.disabled = busy
 
 @onready var project_icon_texture_rect: TextureRect = %ProjectIconTextureRect
@@ -39,6 +41,7 @@ var busy: bool = false:
 @onready var project_path_label: Label = %ProjectPathLabel
 @onready var blazium_version_button: OptionButton = %BlaziumVersionButton
 @onready var open_project_button: Button = %OpenProjectButton
+@onready var run_project_button: Button = %RunProjectButton
 @onready var project_settings_button: MenuButton = %ProjectSettingsButton
 @onready var favorite_button: TextureButton = %FavoriteButton
 
@@ -51,6 +54,7 @@ func _ready() -> void:
 	favorite_button.button_pressed = HubSettings.is_favorite_project(project_path)
 	favorite_button.toggled.connect(_on_favorite_toggled)
 	open_project_button.pressed.connect(_on_open_project_pressed)
+	run_project_button.pressed.connect(_on_run_project_pressed)
 	project_settings_button.get_popup().id_pressed.connect(_on_settings_menu_id_pressed)
 
 
@@ -70,6 +74,10 @@ func _draw() -> void:
 
 func _on_open_project_pressed():
 	open_project.emit(project_path)
+
+
+func _on_run_project_pressed():
+	run_project.emit(project_path)
 
 
 func _on_settings_menu_id_pressed(_id: int):

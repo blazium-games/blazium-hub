@@ -72,6 +72,7 @@ func _build_projects_list(filter_text: String) -> void:
 		project_panel.project_path = path
 		project_panel.project_name = label
 		project_panel.open_project.connect(_on_open)
+		project_panel.run_project.connect(_on_run)
 		project_panel.remove_project.connect(_on_remove)
 		project_panel.favorite_changed.connect(_on_favorite_changed)
 		project_list.add_child(project_panel)
@@ -119,6 +120,8 @@ func _on_scan() -> void:
 func _short_status(msg: String) -> String:
 	if msg.contains("did not become ready"):
 		return "Editor launched but remote control did not become ready."
+	if msg.contains("no main scene"):
+		return "No main scene. Open the project and set one before running."
 	if msg.length() > 160:
 		return msg.substr(0, 157) + "…"
 	return msg
@@ -221,4 +224,19 @@ func _on_open(_path: String) -> void:
 		status.text = _short_status(HubCli.get_last_error())
 		return
 	status.text = "Launched"
+	HubState.refresh_projects()
+
+
+func _on_run(_path: String) -> void:
+	if _path.is_empty():
+		status.text = "Select a project first"
+		return
+	status.text = "Running via blazium-cli…"
+	_set_action_busy(true)
+	var data: Variant = await HubCli.run_project_async(_path)
+	_set_action_busy(false)
+	if data == null:
+		status.text = _short_status(HubCli.get_last_error())
+		return
+	status.text = "Game launched"
 	HubState.refresh_projects()

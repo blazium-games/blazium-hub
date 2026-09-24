@@ -81,6 +81,8 @@ func _launch_update_check() -> void:
 func _on_error(msg: String) -> void:
 	if msg.contains("did not become ready"):
 		status_label.text = "Editor launched but remote control did not become ready."
+	elif msg.contains("no main scene"):
+		status_label.text = "No main scene. Open the project and set one before running."
 	elif msg.length() > 160:
 		status_label.text = msg.substr(0, 157) + "…"
 	else:

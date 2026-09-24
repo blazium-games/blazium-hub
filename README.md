@@ -24,7 +24,7 @@ Requires **[blazium-cli](https://github.com/blazium-games/blazium-cli)** for ins
 
 ## Features
 
-- **Projects** — list / add / remove / open via `blazium-cli --json`
+- **Projects** — list / add / remove / open the editor / run the game via `blazium-cli --json`
 - **Editors** — CDN catalogs (`release` / `nightly`) + CLI install/uninstall
 - **News** — Blazium articles from `cdn.blazium.app/articles/rss.xml`, readable in-app (BBCode body + external `hosts` links from each article’s `meta.json`)
 - **Settings** — CLI path, editor install path, close-to-tray (Windows), CLI upgrade check
@@ -45,9 +45,9 @@ Untrusted ingress (CDN, News BBCode/`hosts`, SingleInstance IPC, `hub_remote.jso
 | URI | Action |
 |-----|--------|
 | `blazium://hub` | Launch/focus Hub via CLI remote_control |
-| `blazium://open?path=…` | Open/focus project via CLI |
-| `blazium://load?path=…` | Load project (profile) via CLI |
-| `blazium://project/<encoded-path>` | Shorthand open |
+| `blazium://open?path=…` | Open the project in the editor via CLI |
+| `blazium://load?path=…` | Open the project in the editor (full profile) via CLI |
+| `blazium://project/<encoded-path>` | Shorthand for opening the project in the editor |
 | `blazium://install?version=…` | Install editor via CLI |
 | `blazium://register?path=…` | Register a local editor binary via CLI |
 
