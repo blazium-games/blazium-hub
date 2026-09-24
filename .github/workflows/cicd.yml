@@ -458,8 +458,10 @@ jobs:
               test -n "$RT"
               mkdir -p "$GITHUB_WORKSPACE/.ci/rt"
               cp "$RT" "$GITHUB_WORKSPACE/.ci/rt/clang_rt.builtins-x86_32.lib"
-              export LIB="$GITHUB_WORKSPACE/.ci/rt${LIB:+;$LIB}"
+              RT_DIR="$(cygpath -w "$GITHUB_WORKSPACE/.ci/rt")"
+              export LIB="${RT_DIR};${LIB:-}"
               echo "32-bit compiler-rt: $RT"
+              echo "LIBPATH: $RT_DIR"
             fi
             LINK_EXTRA='linkflags=/MACHINE:X86'
             if [[ -n "${LIB:-}" ]]; then
