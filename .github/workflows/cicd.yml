@@ -450,7 +450,7 @@ jobs:
           # init. clang-cl keeps 16-byte stack alignment, but the host clang-cl emits x64
           # objects unless -m32 is set. Godot links clang_rt.builtins-x86_32.lib; LLVM ships
           # that runtime as clang_rt.builtins-i386.lib.
-          LINK_EXTRA=""
+          LINKFLAGS_ARG=""
           if [[ "${{ matrix.platform }}" == "windows" && "${{ matrix.arch }}" == "x86_32" ]]; then
             if [[ "${{ matrix.target }}" == "template_release" ]]; then
               EXTRA="$EXTRA lto=none use_llvm=yes ccflags=-m32"
@@ -459,11 +459,12 @@ jobs:
               mkdir -p "$GITHUB_WORKSPACE/.ci/rt"
               cp "$RT" "$GITHUB_WORKSPACE/.ci/rt/clang_rt.builtins-x86_32.lib"
               RT_DIR="$(cygpath -w "$GITHUB_WORKSPACE/.ci/rt")"
-              export LIB="${RT_DIR};${LIB:-}"
+              LINKFLAGS_ARG="/MACHINE:X86 /LIBPATH:${RT_DIR}"
               echo "32-bit compiler-rt: $RT"
               echo "LIBPATH: $RT_DIR"
+            else
+              LINKFLAGS_ARG="/MACHINE:X86"
             fi
-            LINK_EXTRA='linkflags=/MACHINE:X86'
             if [[ -n "${LIB:-}" ]]; then
               LIB="$(printf '%s' "$LIB" | tr ';' '\n' | grep -viE '[\\/](x64|arm64)(\\|/|$)' | paste -sd';' - || true)"
               export LIB
@@ -471,9 +472,15 @@ jobs:
             fi
           fi
           # shellcheck disable=SC2046,SC2086
-          scons -j"$JOBS" platform=${{ matrix.platform }} target=${{ matrix.target }} arch=${{ matrix.arch }} \
-            $(cat ../flags/common.txt) $EXTRA $LINK_EXTRA \
-            compiledb=no verbose=yes
+          if [[ -n "$LINKFLAGS_ARG" ]]; then
+            scons -j"$JOBS" platform=${{ matrix.platform }} target=${{ matrix.target }} arch=${{ matrix.arch }} \
+              $(cat ../flags/common.txt) $EXTRA "linkflags=${LINKFLAGS_ARG}" \
+              compiledb=no verbose=yes
+          else
+            scons -j"$JOBS" platform=${{ matrix.platform }} target=${{ matrix.target }} arch=${{ matrix.arch }} \
+              $(cat ../flags/common.txt) $EXTRA \
+              compiledb=no verbose=yes
+          fi
           ls -lh bin/ || true
 
       - name: Stage binary
