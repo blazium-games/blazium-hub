@@ -972,13 +972,31 @@ jobs:
           } else {
             $text = [System.Text.Encoding]::UTF8.GetString($bytes)
           }
-          if ($text -notmatch 'asInvoker') {
-            $preview = ($text -replace '[^\x09\x0A\x0D\x20-\x7E]', '?')
-            if ($preview.Length -gt 400) { $preview = $preview.Substring(0, 400) }
-            Write-Host "Manifest preview: $preview"
-            throw "packaged Hub manifest has no asInvoker execution level"
+          # The engine manifest has longPathAware and no requestedExecutionLevel.
+          # Missing level means asInvoker, so insert requireAdministrator when absent.
+          if ($text -match 'asInvoker') {
+            $text = [regex]::Replace($text, 'asInvoker', 'requireAdministrator')
+          } elseif ($text -notmatch 'requireAdministrator') {
+            $trust = @(
+              '	<trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">'
+              '		<security>'
+              '			<requestedPrivileges>'
+              '				<requestedExecutionLevel level="requireAdministrator" uiAccess="false"/>'
+              '			</requestedPrivileges>'
+              '		</security>'
+              '	</trustInfo>'
+            ) -join "`r`n"
+            if ($text -notmatch '</assembly>') {
+              $preview = ($text -replace '[^\x09\x0A\x0D\x20-\x7E]', '?')
+              if ($preview.Length -gt 800) { $preview = $preview.Substring(0, 800) }
+              Write-Host "Manifest preview: $preview"
+              throw "packaged Hub manifest has no </assembly> tag"
+            }
+            $text = [regex]::Replace($text, '</assembly>', ($trust + "`r`n</assembly>"))
           }
-          $text = [regex]::Replace($text, 'asInvoker', 'requireAdministrator')
+          if ($text -notmatch 'requireAdministrator') {
+            throw "failed to set requireAdministrator on packaged Hub manifest"
+          }
           $utf8 = New-Object System.Text.UTF8Encoding $false
           [System.IO.File]::WriteAllText($manifest, $text, $utf8)
           & $mt.FullName -nologo "-manifest" $manifest "-outputresource:$exe;#1"
