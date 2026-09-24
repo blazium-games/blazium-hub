@@ -946,6 +946,29 @@ jobs:
           ls -lh build/package/windows/ build/package/windows/Hub/
           build/package/windows/Hub/BlaziumHub.exe --headless --self-test --quit
 
+      - name: Require administrator on packaged BlaziumHub.exe
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $exe = "build/package/windows/Hub/BlaziumHub.exe"
+          if (-not (Test-Path $exe)) { throw "Missing packaged Hub exe: $exe" }
+          $mt = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Recurse -Filter mt.exe -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match '\\x64\\mt.exe$' } |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+          if (-not $mt) { throw "mt.exe not found under Windows Kits" }
+          $manifest = Join-Path $env:RUNNER_TEMP "BlaziumHub.manifest"
+          & $mt.FullName -nologo "-inputresource:$exe;#1" "-out:$manifest"
+          if ($LASTEXITCODE -ne 0) { throw "mt.exe failed to extract manifest ($LASTEXITCODE)" }
+          $text = [System.IO.File]::ReadAllText($manifest)
+          if ($text -notmatch 'level="asInvoker"') { throw "packaged Hub manifest has no asInvoker execution level" }
+          $text = $text.Replace('level="asInvoker"', 'level="requireAdministrator"')
+          $utf8 = New-Object System.Text.UTF8Encoding $false
+          [System.IO.File]::WriteAllText($manifest, $text, $utf8)
+          & $mt.FullName -nologo "-manifest" $manifest "-outputresource:$exe;#1"
+          if ($LASTEXITCODE -ne 0) { throw "mt.exe failed to write requireAdministrator manifest ($LASTEXITCODE)" }
+          Write-Host "Stamped requireAdministrator on $exe"
+
       - uses: actions/upload-artifact@v7
         with:
           name: windows-package-unsigned-${{ matrix.arch }}

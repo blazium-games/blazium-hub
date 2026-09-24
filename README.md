@@ -113,7 +113,7 @@ Rotate the key by updating local `production.env` and the `PRODUCTION_ENV` secre
 
 ## Packaging & CDN
 
-- **Windows:** Inno Setup — [`packaging/windows/blazium-hub.iss`](packaging/windows/blazium-hub.iss). Requires **admin** (machine-wide `{autopf}\Blazium`, no `/CURRENTUSER`); registers `blazium://` and finish-page options to launch Hub or visit [blazium.app](https://blazium.app).
+- **Windows:** Inno Setup — [`packaging/windows/blazium-hub.iss`](packaging/windows/blazium-hub.iss). Requires **admin** (machine-wide `{autopf}\Blazium`, no `/CURRENTUSER`); registers `blazium://` and finish-page options to launch Hub or visit [blazium.app](https://blazium.app). The packaged `BlaziumHub.exe` requests administrator, so every launch shows a UAC prompt and editor installs can write Program Files. `blazium-cli.exe` stays a normal process unless Hub starts it.
 - **Linux:** nfpm `.deb` — [`packaging/linux/nfpm.yaml`](packaging/linux/nfpm.yaml) + `x-scheme-handler/blazium`.
 
 CI (`.github/workflows/cicd.yml`) builds Linux and Windows installers for x86_64 and x86_32. CDN upload runs only after every required build exists, then signing, then Spaces and Cerebro.
