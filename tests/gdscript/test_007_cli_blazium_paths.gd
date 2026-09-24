@@ -83,6 +83,7 @@ func test_007_packaging_shims_exist() -> void:
 	assert_true(cicd.contains("requireAdministrator"), "CI stamps requireAdministrator")
 	assert_true(cicd.contains("build/package/windows/Hub/BlaziumHub.exe"), "stamp targets the packaged Hub exe")
 	assert_true(cicd.contains("Encoding]::Unicode"), "manifest read handles mt.exe UTF-16")
+	assert_true(cicd.contains("requestedExecutionLevel"), "stamp inserts an execution level when the engine manifest has none")
 	assert_true(not iss.contains("PrivilegesRequiredOverridesAllowed="), "disallows /CURRENTUSER override")
 	assert_true(iss.contains("Visit Blazium.app"), "finish page Visit Blazium.app checkbox")
 	assert_true(iss.contains("shellexec"), "Visit Blazium.app uses shellexec")
