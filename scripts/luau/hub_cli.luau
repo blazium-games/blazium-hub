@@ -353,6 +353,10 @@ local HubCli = {
 		return self:run_json(self:_with_crash_reporter({ "open", path }))
 	end,
 
+	run_project = function(self, path)
+		return self:run_json(self:_with_crash_reporter({ "run", path }))
+	end,
+
 	load_project = function(self, path)
 		return self:run_json(self:_with_crash_reporter({ "load", path }))
 	end,

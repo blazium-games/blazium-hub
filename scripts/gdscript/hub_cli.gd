@@ -415,6 +415,14 @@ func open_project_async(path: String) -> Variant:
 	return await run_json_async(_with_crash_reporter(PackedStringArray(["open", path])))
 
 
+func run_project(path: String) -> Variant:
+	return run_json(_with_crash_reporter(PackedStringArray(["run", path])))
+
+
+func run_project_async(path: String) -> Variant:
+	return await run_json_async(_with_crash_reporter(PackedStringArray(["run", path])))
+
+
 func load_project(path: String) -> Variant:
 	return run_json(_with_crash_reporter(PackedStringArray(["load", path])))
 
