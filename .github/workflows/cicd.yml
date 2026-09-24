@@ -277,9 +277,9 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.force_engine_rebuild }}" == "true" ]]; then
             FORCE="-force-${{ github.run_id }}"
           fi
-          # -clang32-msdf: Windows x86_32 template is clang-cl (use_llvm=yes, lto=none).
-          # MSVC x86 still segfaults after PhysicsServer2D init when linked without /LTCG.
-          KEY="hub-engine-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.target }}-blazium_4.8-${{ needs.resolve-engine.outputs.blazium_sha }}-${{ needs.resolve-engine.outputs.version }}-${{ hashFiles('ci/hub_scons.env') }}-${ENC}-clang32-msdf${FORCE}"
+          # -clang32-m32: Windows x86_32 template is clang-cl -m32 (use_llvm=yes, lto=none).
+          # Host clang-cl emits x64 objects unless -m32 is passed.
+          KEY="hub-engine-${{ matrix.platform }}-${{ matrix.arch }}-${{ matrix.target }}-blazium_4.8-${{ needs.resolve-engine.outputs.blazium_sha }}-${{ needs.resolve-engine.outputs.version }}-${{ hashFiles('ci/hub_scons.env') }}-${ENC}-clang32-m32${FORCE}"
           echo "key=$KEY" >> "$GITHUB_OUTPUT"
           echo "Binary cache key: $KEY"
 
@@ -447,11 +447,19 @@ jobs:
           # Blazium setup_msvc_manual (VCVARS path) never sets SCons TARGET_ARCH, so the
           # linker defaults to x64 PE even when the compiler is x86. Force /MACHINE:X86.
           # MSVC x86 (with or without /LTCG) segfaults that template after PhysicsServer2D
-          # init. clang-cl keeps 16-byte stack alignment. GCC x86_32 keeps lto=full.
+          # init. clang-cl keeps 16-byte stack alignment, but the host clang-cl emits x64
+          # objects unless -m32 is set. Godot links clang_rt.builtins-x86_32.lib; LLVM ships
+          # that runtime as clang_rt.builtins-i386.lib.
           LINK_EXTRA=""
           if [[ "${{ matrix.platform }}" == "windows" && "${{ matrix.arch }}" == "x86_32" ]]; then
             if [[ "${{ matrix.target }}" == "template_release" ]]; then
-              EXTRA="$EXTRA lto=none use_llvm=yes"
+              EXTRA="$EXTRA lto=none use_llvm=yes ccflags=-m32"
+              RT="$(find "/c/Program Files/LLVM/lib/clang" "/c/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/Llvm/lib/clang" -name 'clang_rt.builtins-i386.lib' -print -quit 2>/dev/null || true)"
+              test -n "$RT"
+              mkdir -p "$GITHUB_WORKSPACE/.ci/rt"
+              cp "$RT" "$GITHUB_WORKSPACE/.ci/rt/clang_rt.builtins-x86_32.lib"
+              export LIB="$GITHUB_WORKSPACE/.ci/rt${LIB:+;$LIB}"
+              echo "32-bit compiler-rt: $RT"
             fi
             LINK_EXTRA='linkflags=/MACHINE:X86'
             if [[ -n "${LIB:-}" ]]; then
