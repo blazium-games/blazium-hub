@@ -6,6 +6,9 @@
 ; PrivilegesRequiredOverridesAllowed — /CURRENTUSER must not downgrade to a
 ; per-user install. Program Files + HKLM BLAZIUM let Hub self-update by
 ; re-running this elevated Setup (CloseApplications closes running Hub/CLI).
+; CI stamps the packaged Hub exe manifest to requireAdministrator after the
+; unelevated self-test, so Start Menu, desktop, and blazium-hub.cmd show UAC.
+; blazium-cli.exe stays asInvoker; an elevated Hub passes that token to the CLI.
 ;
 ; Build (CI):
 ;   iscc /DMyAppVersion=0.1.0 /DMyAppArchLabel=x86_64 /DMyAppSourceDir=... blazium-hub.iss
