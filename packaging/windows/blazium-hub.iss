@@ -6,9 +6,9 @@
 ; PrivilegesRequiredOverridesAllowed — /CURRENTUSER must not downgrade to a
 ; per-user install. Program Files + HKLM BLAZIUM let Hub self-update by
 ; re-running this elevated Setup (CloseApplications closes running Hub/CLI).
-; CI stamps the packaged Hub exe manifest to requireAdministrator after the
-; unelevated self-test, so Start Menu, desktop, and blazium-hub.cmd show UAC.
-; blazium-cli.exe stays asInvoker; an elevated Hub passes that token to the CLI.
+; BlaziumHub.exe stays asInvoker. The elevated install grants Users modify on
+; {app}, so Start Menu, desktop, and the finish page launch Hub without UAC
+; and later updates can still write the install tree. blazium-cli.exe stays asInvoker.
 ;
 ; Build (CI):
 ;   iscc /DMyAppVersion=0.1.0 /DMyAppArchLabel=x86_64 /DMyAppSourceDir=... blazium-hub.iss
@@ -79,6 +79,10 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 Name: "analytics"; Description: "Help improve Blazium Hub with anonymous analytics"; GroupDescription: "Privacy:"
+
+[Dirs]
+; Inheritable modify so a normal-user Hub can install editors and apply updates.
+Name: "{app}"; Permissions: users-modify
 
 [Files]
 ; Hub/ stages BlaziumHub.exe with an embedded pack (embed_pck=true).
