@@ -18,39 +18,22 @@ MAX_ATTEMPTS = 6
 RETRY_SLEEP_SEC = 5
 
 
-def _version_key(ver: str) -> tuple:
-    """Sort key for dotted numeric versions (newest-first via reverse=True)."""
-    parts: list[int] = []
-    for p in str(ver).split("."):
-        try:
-            parts.append(int(p))
-        except ValueError:
-            parts.append(-1)
-    return tuple(parts)
-
-
 def resolve_download(
     manifest: dict[str, Any], platform: str, arch: str
 ) -> tuple[str | None, dict[str, Any] | None, str | None]:
+    """Return the download for manifest['latest'] only."""
     versions: dict[str, Any] = manifest.get("versions") or {}
     latest = (manifest.get("latest") or "").strip() or None
-
-    order: list[str] = []
-    if latest and latest in versions:
-        order.append(latest)
-    for ver in sorted(versions.keys(), key=_version_key, reverse=True):
-        if ver not in order:
-            order.append(ver)
-
-    for ver in order:
-        entry = versions.get(ver) or {}
-        for d in entry.get("downloads") or []:
-            if (
-                d.get("platform") == platform
-                and d.get("arch") == arch
-                and (d.get("download_url") or "").strip()
-            ):
-                return ver, d, latest
+    if not latest:
+        return None, None, latest
+    entry = versions.get(latest) or {}
+    for d in entry.get("downloads") or []:
+        if (
+            d.get("platform") == platform
+            and d.get("arch") == arch
+            and (d.get("download_url") or "").strip()
+        ):
+            return latest, d, latest
     return None, None, latest
 
 
@@ -130,10 +113,10 @@ def main() -> int:
 
     if latest and version != latest:
         print(
-            f"Using crash_reporter {version} for {args.platform}/{args.arch} "
-            f"(latest {latest} missing arch)",
+            f"refusing crash_reporter {version}; catalog latest is {latest}",
             file=sys.stderr,
         )
+        return 1
 
     expected = (download.get("sha256") or "").strip().lower()
     if args.stamp_project:
