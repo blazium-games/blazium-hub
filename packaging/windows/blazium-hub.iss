@@ -56,7 +56,7 @@ AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 DefaultDirName={autopf}\Blazium
-DefaultGroupName=BlaziumHub
+DefaultGroupName=Blazium
 AllowNoIcons=yes
 UsePreviousAppDir=yes
 LicenseFile=..\..\LICENSE
@@ -98,6 +98,8 @@ Source: "toolchain-features.txt"; Flags: dontcopy
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\Hub\{#MyAppExeName}"
+Name: "{group}\Blazium.app"; Filename: "{#MyAppURL}"
+Name: "{group}\Blazium Docs"; Filename: "https://docs.blazium.app"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\Hub\{#MyAppExeName}"; Tasks: desktopicon
 
