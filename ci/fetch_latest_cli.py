@@ -17,45 +17,25 @@ MAX_ATTEMPTS = 6
 RETRY_SLEEP_SEC = 5
 
 
-def _version_key(ver: str) -> tuple:
-    """Sort key for dotted numeric versions (newest-first via reverse=True)."""
-    parts: list[int] = []
-    for p in str(ver).split("."):
-        try:
-            parts.append(int(p))
-        except ValueError:
-            # Non-numeric segment: keep stable but behind pure ints.
-            parts.append(-1)
-    return tuple(parts)
-
-
 def resolve_download(
     manifest: dict[str, Any], platform: str, arch: str
 ) -> tuple[str | None, dict[str, Any] | None, str | None]:
-    """Pick newest catalog version that has platform/arch.
+    """Return the download for manifest['latest'] only.
 
-    Returns (version, download, latest_label). Prefer manifest['latest'] when it
-    has the arch; otherwise walk other versions newest-first.
+    Older catalog versions are not a substitute when latest lacks this arch.
     """
     versions: dict[str, Any] = manifest.get("versions") or {}
     latest = (manifest.get("latest") or "").strip() or None
-
-    order: list[str] = []
-    if latest and latest in versions:
-        order.append(latest)
-    for ver in sorted(versions.keys(), key=_version_key, reverse=True):
-        if ver not in order:
-            order.append(ver)
-
-    for ver in order:
-        entry = versions.get(ver) or {}
-        for d in entry.get("downloads") or []:
-            if (
-                d.get("platform") == platform
-                and d.get("arch") == arch
-                and (d.get("download_url") or "").strip()
-            ):
-                return ver, d, latest
+    if not latest:
+        return None, None, latest
+    entry = versions.get(latest) or {}
+    for d in entry.get("downloads") or []:
+        if (
+            d.get("platform") == platform
+            and d.get("arch") == arch
+            and (d.get("download_url") or "").strip()
+        ):
+            return latest, d, latest
     return None, None, latest
 
 
@@ -112,10 +92,10 @@ def main() -> int:
 
     if latest and version != latest:
         print(
-            f"Using CLI {version} for {args.platform}/{args.arch} "
-            f"(latest {latest} missing arch)",
+            f"refusing CLI {version}; catalog latest is {latest}",
             file=sys.stderr,
         )
+        return 1
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
