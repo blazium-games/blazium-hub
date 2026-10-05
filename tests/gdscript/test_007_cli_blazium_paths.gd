@@ -164,6 +164,7 @@ func test_007_packaging_shims_exist() -> void:
 	assert_true(smoke_linux.contains("/opt/blazium/VERSION"), "linux smoke checks Hub VERSION")
 	var postrm := FileAccess.get_file_as_string("res://packaging/linux/postrm")
 	assert_true(postrm.contains("/etc/blazium"), "linux postrm removes /etc/blazium")
+	assert_true(postrm.contains("BlaziumLauncher"), "linux postrm keeps shared tools when BlaziumLauncher remains")
 	assert_true(postrm.contains("/usr/bin/blazium-toolchain"), "linux postrm removes toolchain symlink")
 	assert_true(not postrm.contains("godot"), "linux postrm has no godot userdata path")
 

@@ -174,6 +174,7 @@ if ($u.ExitCode -ne 0) { throw "Uninstaller exit $($u.ExitCode)" }
 # Give Inno a moment to finish file deletes
 Start-Sleep -Seconds 2
 
+# Hub-only custom dir: no BlaziumLauncher and no chauffeur, so PATH, BLAZIUM, and the CLI go away.
 Write-Host "=== Assert Hub removal leaves shared user data ==="
 if (Test-Path $CustomDir) {
     $left = Get-ChildItem -Force $CustomDir -ErrorAction SilentlyContinue

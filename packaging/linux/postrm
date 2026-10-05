@@ -1,31 +1,84 @@
 #!/bin/sh
 set -e
 # Remove BlaziumHub files. Leave /opt/blazium/games, chauffeur, and launcher_remote.json.
-rm -f /usr/bin/blazium-hub /usr/bin/blazium-cli /usr/bin/blazium /usr/bin/blazium-toolchain
-rm -f /etc/profile.d/blazium.sh
+rm -f /usr/bin/blazium-hub /usr/bin/blazium-toolchain
 rm -rf /opt/blazium/engine
-rm -f /opt/blazium/bin/blazium-hub /opt/blazium/bin/blazium-cli /opt/blazium/bin/blazium
+rm -f /opt/blazium/bin/blazium-hub
 rm -f /opt/blazium/bin/crash_reporter /opt/blazium/bin/crash_reporter.version
 rm -f /opt/blazium/VERSION /opt/blazium/bin/VERSION
-rmdir /opt/blazium/bin 2>/dev/null || true
-rmdir /opt/blazium 2>/dev/null || true
 rm -f /etc/blazium/hub_remote.json
 rmdir /etc/blazium 2>/dev/null || true
 
-keep_launcher() {
+keep_hub_remote() {
   uhome="$1"
   [ -n "$uhome" ] || return 0
   rm -f "$uhome/.config/blazium/hub_remote.json"
 }
 
 if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
-  keep_launcher "$(getent passwd "$SUDO_USER" | cut -d: -f6)"
+  keep_hub_remote "$(getent passwd "$SUDO_USER" | cut -d: -f6)"
 fi
 if [ -n "${HOME:-}" ] && [ "$HOME" != "/root" ]; then
-  keep_launcher "$HOME"
+  keep_hub_remote "$HOME"
 fi
 
-if command -v update-desktop-database >/dev/null 2>&1; then
-  update-desktop-database -q /usr/share/applications || true
+shared=0
+if [ -x /opt/blazium/games/BlaziumLauncher ] || [ -x /opt/blazium/bin/chauffeur ]; then
+  shared=1
+fi
+
+if [ "$shared" -eq 1 ]; then
+  # dpkg already removed the packaged CLI and profile script.
+  mkdir -p /opt/blazium/bin
+  if [ -x /opt/blazium/games/blazium-cli ]; then
+    cp -a /opt/blazium/games/blazium-cli /opt/blazium/bin/blazium-cli
+    ln -sfn blazium-cli /opt/blazium/bin/blazium
+    ln -sfn /opt/blazium/bin/blazium-cli /usr/bin/blazium-cli
+    ln -sfn /opt/blazium/bin/blazium /usr/bin/blazium
+  else
+    rm -f /usr/bin/blazium-cli /usr/bin/blazium
+    rm -f /opt/blazium/bin/blazium-cli /opt/blazium/bin/blazium
+  fi
+  cat > /etc/profile.d/blazium.sh << 'EOF'
+# Blazium Hub + CLI environment (installed to /etc/profile.d/blazium.sh)
+export BLAZIUM=/opt/blazium
+case ":${PATH}:" in
+  *":${BLAZIUM}/bin:"*) ;;
+  *) export PATH="${BLAZIUM}/bin:${PATH}" ;;
+esac
+EOF
+  handler=""
+  if [ -x /opt/blazium/bin/blazium-cli ]; then
+    handler="/opt/blazium/bin/blazium-cli handle-uri %u"
+  elif [ -x /opt/blazium/games/BlaziumLauncher ]; then
+    handler="/opt/blazium/games/BlaziumLauncher %u"
+  fi
+  if [ -n "$handler" ]; then
+    cat > /usr/share/applications/blazium-uri.desktop << EOF
+[Desktop Entry]
+Type=Application
+Name=Blazium URI Handler
+Exec=${handler}
+NoDisplay=true
+Terminal=false
+MimeType=x-scheme-handler/blazium;
+EOF
+    if command -v update-desktop-database >/dev/null 2>&1; then
+      update-desktop-database -q /usr/share/applications || true
+    fi
+    if command -v xdg-mime >/dev/null 2>&1; then
+      xdg-mime default blazium-uri.desktop x-scheme-handler/blazium || true
+    fi
+  fi
+else
+  rm -f /usr/bin/blazium-cli /usr/bin/blazium
+  rm -f /opt/blazium/bin/blazium-cli /opt/blazium/bin/blazium
+  rm -f /etc/profile.d/blazium.sh
+  rm -f /usr/share/applications/blazium-uri.desktop
+  rmdir /opt/blazium/bin 2>/dev/null || true
+  rmdir /opt/blazium 2>/dev/null || true
+  if command -v update-desktop-database >/dev/null 2>&1; then
+    update-desktop-database -q /usr/share/applications || true
+  fi
 fi
 exit 0

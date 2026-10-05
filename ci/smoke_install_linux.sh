@@ -43,6 +43,7 @@ echo smoke > "$HOME/.local/share/blazium/marker"
 echo "=== Purge ==="
 sudo dpkg --purge blazium-hub
 
+# Hub-only: no BlaziumLauncher and no chauffeur, so the CLI, profile script, and BLAZIUM go away.
 echo "=== Assert Hub removal leaves the shared root and user data ==="
 test ! -e /opt/blazium/engine
 test ! -e /opt/blazium/bin/blazium-cli

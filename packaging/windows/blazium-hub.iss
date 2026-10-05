@@ -88,10 +88,10 @@ Name: "{app}"; Permissions: users-modify
 [Files]
 ; Hub/ stages BlaziumHub.exe with an embedded pack (embed_pck=true).
 Source: "{#MyAppSourceDir}\Hub\*"; DestDir: "{app}\Engine"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "{#MyAppSourceDir}\blazium-cli.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppSourceDir}\blazium-cli.exe"; DestDir: "{app}"; Flags: ignoreversion uninsneveruninstall
 Source: "{#MyAppSourceDir}\Hub\crash_reporter.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppSourceDir}\VERSION"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#MyAppSourceDir}\blazium.cmd"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#MyAppSourceDir}\blazium.cmd"; DestDir: "{app}"; Flags: ignoreversion uninsneveruninstall
 Source: "{#MyAppSourceDir}\blazium-hub.cmd"; DestDir: "{app}"; Flags: ignoreversion
 ; Wizard-only texts (extracted in InitializeWizard; not installed).
 Source: "toolchain-LICENSE.txt"; Flags: dontcopy
@@ -626,51 +626,88 @@ begin
   end;
 end;
 
+function SharedRoot: String;
+begin
+  Result := ExpandConstant('{autopf}\Blazium');
+end;
+
 function GamesLauncherInstalled: Boolean;
 begin
-  Result := FileExists(ExpandConstant('{autopf}\Blazium\Games\BlaziumLauncher.exe')) or
+  Result := FileExists(AddBackslash(SharedRoot) + 'Games\BlaziumLauncher.exe') or
     FileExists(ExpandConstant('{autopf}\Blazium Games\BlaziumGames.exe'));
 end;
 
-procedure RestoreLauncherProtocol;
-var
-  Launcher: string;
+function ChauffeurInstalled: Boolean;
 begin
-  if FileExists(ExpandConstant('{autopf}\Blazium\Games\BlaziumLauncher.exe')) then
-    Launcher := ExpandConstant('{autopf}\Blazium\Games\BlaziumLauncher.exe')
+  Result := FileExists(AddBackslash(SharedRoot) + 'chauffeur.exe');
+end;
+
+function SameDir(A, B: String): Boolean;
+begin
+  Result := CompareText(RemoveBackslash(A), RemoveBackslash(B)) = 0;
+end;
+
+function LauncherExecutable: String;
+begin
+  Result := '';
+  if FileExists(AddBackslash(SharedRoot) + 'Games\BlaziumLauncher.exe') then
+    Result := AddBackslash(SharedRoot) + 'Games\BlaziumLauncher.exe'
   else if FileExists(ExpandConstant('{autopf}\Blazium Games\BlaziumGames.exe')) then
-    Launcher := ExpandConstant('{autopf}\Blazium Games\BlaziumGames.exe')
-  else
-    exit;
+    Result := ExpandConstant('{autopf}\Blazium Games\BlaziumGames.exe');
+end;
+
+procedure RegisterProtocol(const Command: String; const LauncherOwns: Boolean);
+begin
   RegWriteStringValue(HKCR, 'blazium', '', 'URL:Blazium Protocol');
   RegWriteStringValue(HKCR, 'blazium', 'URL Protocol', '');
-  RegWriteStringValue(HKCR, 'blazium\shell\open\command', '', '"' + Launcher + '" "%1"');
-  RegWriteStringValue(HKLM, 'SOFTWARE\BlaziumLauncher', 'ProtocolOwner', '1');
+  RegWriteStringValue(HKCR, 'blazium\shell\open\command', '', Command);
+  if LauncherOwns then
+    RegWriteStringValue(HKLM, 'SOFTWARE\BlaziumLauncher', 'ProtocolOwner', '1');
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
-  GamesRemains: Boolean;
+  AppDir, Root, CliPath, Launcher: String;
+  KeepCli, KeepShared: Boolean;
 begin
   if CurUninstallStep = usUninstall then
   begin
     PostAnonymousUninstallEvent;
-    GamesRemains := GamesLauncherInstalled;
-    if not GamesRemains then
-    begin
-      EnvRemovePath(ExpandConstant('{app}'));
-      RegDeleteValue(HKEY_LOCAL_MACHINE, EnvironmentKey, 'BLAZIUM');
-    end;
     DeleteFile(ExpandConstant('{userappdata}\blazium\hub_remote.json'));
     DeleteFile(ExpandConstant('{commonappdata}\blazium\hub_remote.json'));
-  end
-  else if CurUninstallStep = usPostUninstall then
+    exit;
+  end;
+  if CurUninstallStep <> usPostUninstall then
+    exit;
+  AppDir := ExpandConstant('{app}');
+  Root := SharedRoot;
+  KeepCli := GamesLauncherInstalled and SameDir(AppDir, Root);
+  if not KeepCli then
   begin
-    if GamesLauncherInstalled then
+    DeleteFile(AddBackslash(AppDir) + 'blazium-cli.exe');
+    DeleteFile(AddBackslash(AppDir) + 'blazium.cmd');
+  end;
+  if not SameDir(AppDir, Root) then
+    EnvRemovePath(AppDir);
+  CliPath := AddBackslash(Root) + 'blazium-cli.exe';
+  KeepShared := GamesLauncherInstalled or ChauffeurInstalled or FileExists(CliPath);
+  if KeepShared then
+  begin
+    EnvAddPath(Root);
+    RegWriteExpandStringValue(HKLM, EnvironmentKey, 'BLAZIUM', Root);
+    if FileExists(CliPath) then
+      RegisterProtocol('"' + CliPath + '" handle-uri "%1"', False)
+    else
     begin
-      EnvAddPath(ExpandConstant('{autopf}\Blazium'));
-      RegWriteExpandStringValue(HKLM, EnvironmentKey, 'BLAZIUM', ExpandConstant('{autopf}\Blazium'));
-      RestoreLauncherProtocol;
+      Launcher := LauncherExecutable;
+      if Launcher <> '' then
+        RegisterProtocol('"' + Launcher + '" "%1"', True);
     end;
+  end
+  else
+  begin
+    EnvRemovePath(Root);
+    EnvRemovePath(AppDir);
+    RegDeleteValue(HKLM, EnvironmentKey, 'BLAZIUM');
   end;
 end;
