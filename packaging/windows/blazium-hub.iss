@@ -626,14 +626,6 @@ begin
   end;
 end;
 
-procedure WipeDir(const Dir: string);
-begin
-  if Dir = '' then
-    exit;
-  if DirExists(Dir) then
-    DelTree(Dir, True, True, True);
-end;
-
 function GamesLauncherInstalled: Boolean;
 begin
   Result := FileExists(ExpandConstant('{autopf}\Blazium\Games\BlaziumLauncher.exe')) or
