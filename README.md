@@ -30,7 +30,7 @@ Requires **[blazium-cli](https://github.com/blazium-games/blazium-cli)** for ins
 | [Toolchain](https://github.com/blazium-games/blazium-toolchain) | PS1, PS2, N64, and Interactive DVD. `ps3` and `ps4` are reserved and do not ship. | Linux and Windows, x86_64 and x86_32. Catalog: [toolchain.json](https://cdn.blazium.app/toolchain/toolchain.json) |
 | [Skills](https://github.com/blazium-games/blazium-skills) | Agent skill packs for Claude, Cursor, Codex, and Grok. Own semver, separate from the 0.8.x API baseline. | Catalog: [skills.json](https://cdn.blazium.app/skills/skills.json) |
 | [Subagents](https://github.com/blazium-games/blazium-subagents) | Studio roster that loads those skills. Own semver. | Catalog: [subagents.json](https://cdn.blazium.app/subagents/subagents.json) |
-| [Blazium Games](https://blazium.games) | Separate store. Upload with chauffeur, not with these tools. | Site [blazium.games](https://blazium.games), docs [docs.blazium.games](https://docs.blazium.games). |
+| [Blazium Games](https://blazium.games) | Separate store. The player app is [games_launcher](https://github.com/blazium-games/games_launcher). Store links go there, not to Hub. Upload with chauffeur (`@blazium-games/cli`). | Site [blazium.games](https://blazium.games), docs [docs.blazium.games](https://docs.blazium.games). |
 
 How this engine differs from Godot, Redot, Unity, and Unreal is in the [engine README](https://github.com/blazium-games/blazium).
 
