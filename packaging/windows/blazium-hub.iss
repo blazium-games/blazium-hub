@@ -23,7 +23,7 @@
 ; Silent install without anonymous install analytics (CI smokes must pass this):
 ;   ... /NOANALYTICS
 
-#define MyAppName "Blazium Hub"
+#define MyAppName "BlaziumHub"
 #ifndef MyAppVersion
   #define MyAppVersion "0.1.0"
 #endif
@@ -68,7 +68,7 @@ SolidCompression=yes
 WizardStyle=modern
 ; Machine-wide install under {autopf}; required for HKLM env/protocol and Hub/CLI updates.
 PrivilegesRequired=admin
-UninstallDisplayIcon={app}\Hub\{#MyAppExeName}
+UninstallDisplayIcon={app}\Engine\{#MyAppExeName}
 ChangesAssociations=yes
 ChangesEnvironment=yes
 CloseApplications=yes
@@ -78,7 +78,8 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
-Name: "analytics"; Description: "Help improve Blazium Hub with anonymous analytics"; GroupDescription: "Privacy:"
+Name: "installgames"; Description: "Download and install BlaziumLauncher into {autopf}\Blazium\Games"; GroupDescription: "Optional tools:"; Flags: unchecked
+Name: "analytics"; Description: "Help improve BlaziumHub with anonymous analytics"; GroupDescription: "Privacy:"
 
 [Dirs]
 ; Inheritable modify so a normal-user Hub can install editors and apply updates.
@@ -86,9 +87,9 @@ Name: "{app}"; Permissions: users-modify
 
 [Files]
 ; Hub/ stages BlaziumHub.exe with an embedded pack (embed_pck=true).
-Source: "{#MyAppSourceDir}\Hub\*"; DestDir: "{app}\Hub"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#MyAppSourceDir}\Hub\*"; DestDir: "{app}\Engine"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "{#MyAppSourceDir}\blazium-cli.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#MyAppSourceDir}\Hub\crash_reporter.exe"; DestDir: "{app}\Hub"; Flags: ignoreversion
+Source: "{#MyAppSourceDir}\Hub\crash_reporter.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppSourceDir}\VERSION"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppSourceDir}\blazium.cmd"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#MyAppSourceDir}\blazium-hub.cmd"; DestDir: "{app}"; Flags: ignoreversion
@@ -97,25 +98,25 @@ Source: "toolchain-LICENSE.txt"; Flags: dontcopy
 Source: "toolchain-features.txt"; Flags: dontcopy
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\Hub\{#MyAppExeName}"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\Engine\{#MyAppExeName}"
 Name: "{group}\Blazium.app"; Filename: "{#MyAppURL}"
 Name: "{group}\Blazium Docs"; Filename: "https://docs.blazium.app"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\Hub\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\Engine\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
 ; hub_remote.json ensure runs from [Code] CurStepChanged (ignores exit codes; mirrors Linux postinst || true).
 ; Interactive finish-page checkboxes (skipped in silent mode).
-Filename: "{app}\Hub\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\Engine\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 Filename: "{#MyAppURL}"; Description: "Visit Blazium.app"; Flags: postinstall shellexec skipifsilent unchecked
 ; Silent/CLI: launch Hub only when /LAUNCH is passed.
-Filename: "{app}\Hub\{#MyAppExeName}"; Flags: nowait postinstall skipifnotsilent; Check: ShouldLaunchAfterSilent
+Filename: "{app}\Engine\{#MyAppExeName}"; Flags: nowait postinstall skipifnotsilent; Check: ShouldLaunchAfterSilent
 
 [Registry]
 Root: HKLM; Subkey: "SYSTEM\CurrentControlSet\Control\Session Manager\Environment"; ValueType: expandsz; ValueName: "BLAZIUM"; ValueData: "{app}"; Flags: uninsdeletevalue
 Root: HKCR; Subkey: "blazium"; ValueType: string; ValueData: "URL:Blazium Protocol"; Flags: uninsdeletekey
 Root: HKCR; Subkey: "blazium"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
-Root: HKCR; Subkey: "blazium\DefaultIcon"; ValueType: string; ValueData: "{app}\Hub\{#MyAppExeName},0"
+Root: HKCR; Subkey: "blazium\DefaultIcon"; ValueType: string; ValueData: "{app}\Engine\{#MyAppExeName},0"
 ; OS deep links go to blazium-cli; CLI launches/talks to Hub or editors over remote_control.
 Root: HKCR; Subkey: "blazium\shell\open\command"; ValueType: string; ValueData: """{app}\blazium-cli.exe"" handle-uri ""%1"""
 ; Install kind metadata (written from [Code] as well for PreviousVersion).
@@ -400,7 +401,9 @@ var
   MachineOk, UserOk: Boolean;
 begin
   CliPath := ExpandConstant('{app}\blazium-cli.exe');
-  HubPath := ExpandConstant('{app}\Hub\') + '{#MyAppExeName}';
+  HubPath := ExpandConstant('{app}\Engine\') + '{#MyAppExeName}';
+  if not FileExists(HubPath) then
+    HubPath := ExpandConstant('{app}\Hub\') + '{#MyAppExeName}';
   MachinePath := ExpandConstant('{commonappdata}\blazium\hub_remote.json');
   MachineOk := False;
   UserOk := False;
@@ -517,6 +520,36 @@ begin
   end;
 end;
 
+procedure InstallGamesLauncher;
+var
+  ResultCode: Integer;
+  ScriptPath, SetupPath: String;
+begin
+  if not (WizardIsTaskSelected('installgames') or CmdLineParamExists('/INSTALLGAMES')) then
+    exit;
+  ForceDirectories(ExpandConstant('{tmp}'));
+  SetupPath := ExpandConstant('{tmp}\BlaziumLauncher-Setup.exe');
+  ScriptPath := ExpandConstant('{tmp}\blazium-launcher-download.ps1');
+  if not SaveStringToFile(ScriptPath,
+    '$ProgressPreference = ''SilentlyContinue''; Invoke-WebRequest -UseBasicParsing -Uri ''https://github.com/blazium-games/games_launcher/releases/latest/download/BlaziumLauncher-Setup-0.1.0.exe'' -OutFile ''' + SetupPath + '''', False) then
+  begin
+    Log('Could not write the BlaziumLauncher download script');
+    exit;
+  end;
+  if not Exec('powershell.exe', '-NoProfile -ExecutionPolicy Bypass -File "' + ScriptPath + '"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+  begin
+    Log('Could not start the BlaziumLauncher download');
+    exit;
+  end;
+  if (ResultCode <> 0) or not FileExists(SetupPath) then
+  begin
+    Log('BlaziumLauncher download failed exit=' + IntToStr(ResultCode));
+    exit;
+  end;
+  Exec(SetupPath, '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCLI /DIR="' + ExpandConstant('{autopf}\Blazium\Games') + '"', '', SW_SHOW, ewWaitUntilTerminated, ResultCode);
+  Log('BlaziumLauncher setup exit=' + IntToStr(ResultCode));
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssPostInstall then
@@ -527,6 +560,7 @@ begin
     PostAnonymousInstallEvent;
     EnsureHubRemoteSecrets;
     InstallToolchainViaCli;
+    InstallGamesLauncher;
   end;
 end;
 
@@ -600,21 +634,51 @@ begin
     DelTree(Dir, True, True, True);
 end;
 
+function GamesLauncherInstalled: Boolean;
+begin
+  Result := FileExists(ExpandConstant('{autopf}\Blazium\Games\BlaziumLauncher.exe')) or
+    FileExists(ExpandConstant('{autopf}\Blazium Games\BlaziumGames.exe'));
+end;
+
+procedure RestoreLauncherProtocol;
+var
+  Launcher: string;
+begin
+  if FileExists(ExpandConstant('{autopf}\Blazium\Games\BlaziumLauncher.exe')) then
+    Launcher := ExpandConstant('{autopf}\Blazium\Games\BlaziumLauncher.exe')
+  else if FileExists(ExpandConstant('{autopf}\Blazium Games\BlaziumGames.exe')) then
+    Launcher := ExpandConstant('{autopf}\Blazium Games\BlaziumGames.exe')
+  else
+    exit;
+  RegWriteStringValue(HKCR, 'blazium', '', 'URL:Blazium Protocol');
+  RegWriteStringValue(HKCR, 'blazium', 'URL Protocol', '');
+  RegWriteStringValue(HKCR, 'blazium\shell\open\command', '', '"' + Launcher + '" "%1"');
+  RegWriteStringValue(HKLM, 'SOFTWARE\BlaziumLauncher', 'ProtocolOwner', '1');
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
-  UserAppData, LocalAppData, CommonAppData: string;
+  GamesRemains: Boolean;
 begin
   if CurUninstallStep = usUninstall then
   begin
-    EnvRemovePath(ExpandConstant('{app}'));
-    RegDeleteValue(HKEY_LOCAL_MACHINE, EnvironmentKey, 'BLAZIUM');
     PostAnonymousUninstallEvent;
-
-    UserAppData := ExpandConstant('{userappdata}');
-    LocalAppData := ExpandConstant('{localappdata}');
-    CommonAppData := ExpandConstant('{commonappdata}');
-    WipeDir(UserAppData + '\blazium');
-    WipeDir(CommonAppData + '\blazium');
-    WipeDir(LocalAppData + '\Blazium');
+    GamesRemains := GamesLauncherInstalled;
+    if not GamesRemains then
+    begin
+      EnvRemovePath(ExpandConstant('{app}'));
+      RegDeleteValue(HKEY_LOCAL_MACHINE, EnvironmentKey, 'BLAZIUM');
+    end;
+    DeleteFile(ExpandConstant('{userappdata}\blazium\hub_remote.json'));
+    DeleteFile(ExpandConstant('{commonappdata}\blazium\hub_remote.json'));
+  end
+  else if CurUninstallStep = usPostUninstall then
+  begin
+    if GamesLauncherInstalled then
+    begin
+      EnvAddPath(ExpandConstant('{autopf}\Blazium'));
+      RegWriteExpandStringValue(HKLM, EnvironmentKey, 'BLAZIUM', ExpandConstant('{autopf}\Blazium'));
+      RestoreLauncherProtocol;
+    end;
   end;
 end;

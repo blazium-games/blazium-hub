@@ -1,6 +1,6 @@
-# Blazium Hub
+# BlaziumHub
 
-Desktop Hub for [Blazium](https://blazium.app): browse editor builds on the public CDN, manage projects and installs through **blazium-cli**, and handle **`blazium://`** deep links.
+Desktop program for [Blazium](https://blazium.app): browse editor builds on the public CDN, manage projects and installs through **blazium-cli**, and handle **`blazium://`** deep links. The program is `BlaziumHub.exe` at `{autopf}\Blazium\Engine`. Shared tools and the `BLAZIUM` variable stay `{autopf}\Blazium`.
 
 Requires **[blazium-cli](https://github.com/blazium-games/blazium-cli)** for install/open/project mutations (shared `%APPDATA%\blazium\hub.json` / `~/.config/blazium/hub.json`).
 
@@ -25,12 +25,12 @@ Requires **[blazium-cli](https://github.com/blazium-games/blazium-cli)** for ins
 |---------|------|---------|
 | [Engine](https://github.com/blazium-games/blazium) | The editor. Two lines: `blazium-dev` (Godot 4.3+) and `blazium_4.8` (Godot 4.8+). Hub, crash reporter, skills, and subagents track `blazium_4.8`. | [blazium.app/download](https://blazium.app/download) |
 | [CLI](https://github.com/blazium-games/blazium-cli) | Install editors, projects, remote control, Steam and itch.io deploy. Not the Games uploader. | Linux and Windows, x86_64 and x86_32. Catalog: [cli.json](https://cdn.blazium.app/cli/cli.json) |
-| [Hub](https://github.com/blazium-games/blazium-hub) | Desktop companion; installers bundle the CLI. Engine builds track `blazium_4.8`. | Linux and Windows, x86_64 and x86_32. |
+| [BlaziumHub](https://github.com/blazium-games/blazium-hub) | Desktop program at `{autopf}\Blazium\Engine`. The installer bundles the CLI in `{autopf}\Blazium` and can download BlaziumLauncher. Engine builds track `blazium_4.8`. | Linux and Windows, x86_64 and x86_32. |
 | [Crash reporter](https://github.com/blazium-games/blazium_crash_reporter) | Sidecar UI for engine and Hub crash reports. Engine builds track `blazium_4.8`. | Linux and Windows, x86_64 and x86_32. Catalog: [crash_reporter.json](https://cdn.blazium.app/crash_reporter/crash_reporter.json) |
 | [Toolchain](https://github.com/blazium-games/blazium-toolchain) | PS1, PS2, N64, and Interactive DVD. `ps3` and `ps4` are reserved and do not ship. | Linux and Windows, x86_64 and x86_32. Catalog: [toolchain.json](https://cdn.blazium.app/toolchain/toolchain.json) |
 | [Skills](https://github.com/blazium-games/blazium-skills) | Agent skill packs for Claude, Cursor, Codex, and Grok. Own semver, separate from the 0.8.x API baseline. | Catalog: [skills.json](https://cdn.blazium.app/skills/skills.json) |
 | [Subagents](https://github.com/blazium-games/blazium-subagents) | Studio roster that loads those skills. Own semver. | Catalog: [subagents.json](https://cdn.blazium.app/subagents/subagents.json) |
-| [Blazium Games](https://blazium.games) | Separate store. The player app is [games_launcher](https://github.com/blazium-games/games_launcher). Store links go there, not to Hub. Upload with chauffeur (`@blazium-games/cli`). | Site [blazium.games](https://blazium.games), docs [docs.blazium.games](https://docs.blazium.games). |
+| [Blazium Games](https://blazium.games) | Separate store. BlaziumLauncher is installed at `{autopf}\Blazium\Games` by either installer. Store links go there, not to BlaziumHub. Upload with chauffeur (`@blazium-games/cli`). | Site [blazium.games](https://blazium.games), docs [docs.blazium.games](https://docs.blazium.games). |
 
 How this engine differs from Godot, Redot, Unity, and Unreal is in the [engine README](https://github.com/blazium-games/blazium).
 
@@ -125,7 +125,7 @@ Rotate the key by updating local `production.env` and the `PRODUCTION_ENV` secre
 
 ## Packaging & CDN
 
-- **Windows:** Inno Setup — [`packaging/windows/blazium-hub.iss`](packaging/windows/blazium-hub.iss). Setup requires **admin** (machine-wide `{autopf}\Blazium`, no `/CURRENTUSER`) and grants Users modify on that folder. `BlaziumHub.exe` stays a normal process, so the finish page, Start Menu, and desktop shortcut launch without a UAC prompt, and editor installs can still write Program Files. `blazium-cli.exe` stays a normal process. The Start Menu folder `Blazium` contains Hub, Uninstall, [blazium.app](https://blazium.app), and [Blazium Docs](https://docs.blazium.app). Registers `blazium://` and finish-page options to launch Hub or visit blazium.app.
+- **Windows:** Inno Setup — [`packaging/windows/blazium-hub.iss`](packaging/windows/blazium-hub.iss). Setup requires **admin** (machine-wide `{autopf}\Blazium`, no `/CURRENTUSER`) and grants Users modify on that folder. `BlaziumHub.exe` is installed in `{autopf}\Blazium\Engine` and stays a normal process, so the finish page, Start Menu, and desktop shortcut launch without a UAC prompt. `blazium-cli.exe` and `crash_reporter.exe` stay in `{autopf}\Blazium`. The Start Menu folder `Blazium` contains BlaziumHub, Uninstall, [blazium.app](https://blazium.app), and [Blazium Docs](https://docs.blazium.app). Registers `blazium://` to `blazium-cli`. An optional task downloads BlaziumLauncher into `{autopf}\Blazium\Games`.
 - **Linux:** nfpm `.deb` — [`packaging/linux/nfpm.yaml`](packaging/linux/nfpm.yaml) + `x-scheme-handler/blazium`.
 
 CI (`.github/workflows/cicd.yml`) builds Linux and Windows installers for x86_64 and x86_32. CDN upload runs only after every required build exists, then signing, then Spaces and Cerebro.

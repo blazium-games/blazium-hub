@@ -6,14 +6,14 @@ section: devel
 priority: optional
 maintainer: Blazium Games <support@blazium.app>
 description: |
-  Blazium Hub desktop application with bundled blazium-cli and crash_reporter.
-  Sets BLAZIUM=/opt/blazium and registers the blazium:// URI scheme.
+  BlaziumHub desktop application. The program is /opt/blazium/engine/blazium-hub.
+  Shared tools stay in /opt/blazium/bin. Sets BLAZIUM=/opt/blazium and registers blazium://.
 vendor: Blazium Games
 homepage: https://blazium.app
 license: MIT
 contents:
   - src: ../../build/package/linux/bin/blazium-hub
-    dst: /opt/blazium/bin/blazium-hub
+    dst: /opt/blazium/engine/blazium-hub
     file_info:
       mode: 0755
   - src: ../../build/package/linux/bin/blazium-cli

@@ -1,25 +1,28 @@
 #!/bin/sh
 set -e
-# Full undo: remove install root, PATH profile, /usr/bin links, and user Blazium data.
+# Remove BlaziumHub files. Leave /opt/blazium/games, chauffeur, and launcher_remote.json.
 rm -f /usr/bin/blazium-hub /usr/bin/blazium-cli /usr/bin/blazium /usr/bin/blazium-toolchain
 rm -f /etc/profile.d/blazium.sh
-rm -rf /opt/blazium
-rm -rf /etc/blazium
+rm -rf /opt/blazium/engine
+rm -f /opt/blazium/bin/blazium-hub /opt/blazium/bin/blazium-cli /opt/blazium/bin/blazium
+rm -f /opt/blazium/bin/crash_reporter /opt/blazium/bin/crash_reporter.version
+rm -f /opt/blazium/VERSION /opt/blazium/bin/VERSION
+rmdir /opt/blazium/bin 2>/dev/null || true
+rmdir /opt/blazium 2>/dev/null || true
+rm -f /etc/blazium/hub_remote.json
+rmdir /etc/blazium 2>/dev/null || true
 
-# Wipe data for the user who invoked package removal (when available).
-# Other users' homes are left for admin cleanup.
-wipe_user() {
+keep_launcher() {
   uhome="$1"
   [ -n "$uhome" ] || return 0
-  [ -d "$uhome" ] || return 0
-  rm -rf "$uhome/.config/blazium" "$uhome/.local/share/blazium"
+  rm -f "$uhome/.config/blazium/hub_remote.json"
 }
 
 if [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]; then
-  wipe_user "$(getent passwd "$SUDO_USER" | cut -d: -f6)"
+  keep_launcher "$(getent passwd "$SUDO_USER" | cut -d: -f6)"
 fi
 if [ -n "${HOME:-}" ] && [ "$HOME" != "/root" ]; then
-  wipe_user "$HOME"
+  keep_launcher "$HOME"
 fi
 
 if command -v update-desktop-database >/dev/null 2>&1; then

@@ -6,7 +6,11 @@ mkdir -p "$BLAZIUM_ROOT/bin"
 if [ -f "$BLAZIUM_ROOT/bin/blazium-cli" ]; then
   ln -sfn blazium-cli "$BLAZIUM_ROOT/bin/blazium"
 fi
-ln -sfn "$BLAZIUM_ROOT/bin/blazium-hub" /usr/bin/blazium-hub
+if [ -x "$BLAZIUM_ROOT/engine/blazium-hub" ]; then
+  ln -sfn "$BLAZIUM_ROOT/engine/blazium-hub" /usr/bin/blazium-hub
+elif [ -x "$BLAZIUM_ROOT/bin/blazium-hub" ]; then
+  ln -sfn "$BLAZIUM_ROOT/bin/blazium-hub" /usr/bin/blazium-hub
+fi
 ln -sfn "$BLAZIUM_ROOT/bin/blazium-cli" /usr/bin/blazium-cli
 ln -sfn "$BLAZIUM_ROOT/bin/blazium" /usr/bin/blazium
 if command -v update-desktop-database >/dev/null 2>&1; then
@@ -19,7 +23,10 @@ fi
 # Machine-wide Hub remote secret (idempotent; never rotates a valid token).
 # || true: headless ensure must not fail package configure.
 mkdir -p /etc/blazium
-if [ -x "$BLAZIUM_ROOT/bin/blazium-hub" ]; then
+if [ -x "$BLAZIUM_ROOT/engine/blazium-hub" ]; then
+  "$BLAZIUM_ROOT/engine/blazium-hub" --headless --ensure-hub-remote \
+    --hub-remote-path=/etc/blazium/hub_remote.json --quit || true
+elif [ -x "$BLAZIUM_ROOT/bin/blazium-hub" ]; then
   "$BLAZIUM_ROOT/bin/blazium-hub" --headless --ensure-hub-remote \
     --hub-remote-path=/etc/blazium/hub_remote.json --quit || true
 elif [ -x "$BLAZIUM_ROOT/bin/blazium-cli" ]; then

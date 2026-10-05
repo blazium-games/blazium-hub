@@ -1,9 +1,9 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=Blazium Hub
-Comment=Desktop Hub for Blazium editors and projects
-Exec=/usr/bin/blazium-hub
+Name=BlaziumHub
+Comment=BlaziumHub for editors and projects
+Exec=/opt/blazium/engine/blazium-hub
 Icon=blazium-hub
 Terminal=false
 Categories=Development;IDE;
