@@ -41,10 +41,10 @@ if ($p.ExitCode -ne 0) {
 }
 
 Write-Host "=== Assert custom-dir layout ==="
-$hub = Join-Path $CustomDir "Hub\BlaziumHub.exe"
+$hub = Join-Path $CustomDir "Engine\BlaziumHub.exe"
 $cli = Join-Path $CustomDir "blazium-cli.exe"
-$crash = Join-Path $CustomDir "Hub\crash_reporter.exe"
-$crashVer = Join-Path $CustomDir "Hub\crash_reporter.version"
+$crash = Join-Path $CustomDir "crash_reporter.exe"
+$crashVer = Join-Path $CustomDir "Engine\crash_reporter.version"
 $hubVer = Join-Path $CustomDir "VERSION"
 $shim = Join-Path $CustomDir "blazium.cmd"
 if (-not (Test-Path $hub)) { throw "missing $hub" }
@@ -174,7 +174,7 @@ if ($u.ExitCode -ne 0) { throw "Uninstaller exit $($u.ExitCode)" }
 # Give Inno a moment to finish file deletes
 Start-Sleep -Seconds 2
 
-Write-Host "=== Assert full removal ==="
+Write-Host "=== Assert Hub removal leaves shared user data ==="
 if (Test-Path $CustomDir) {
     $left = Get-ChildItem -Force $CustomDir -ErrorAction SilentlyContinue
     if ($left -and $left.Count -gt 0) {
@@ -189,9 +189,10 @@ $pathAfter = Get-MachinePath
 if ((";" + $pathAfter.ToUpperInvariant() + ";") -like ("*;" + $CustomDir.ToUpperInvariant() + ";*")) {
     throw "PATH still contains install root"
 }
-if (Test-Path $appData) { throw "APPDATA\blazium still exists" }
-$commonBlazium = Join-Path $env:PROGRAMDATA "blazium"
-if (Test-Path $commonBlazium) { throw "PROGRAMDATA\blazium still exists" }
-if (Test-Path $local) { throw "LOCALAPPDATA\Blazium still exists" }
+if (Test-Path (Join-Path $appData "hub_remote.json")) { throw "user hub_remote.json still exists" }
+if (-not (Test-Path (Join-Path $appData "hub.json"))) { throw "uninstall removed hub.json" }
+$commonRemote = Join-Path $env:PROGRAMDATA "blazium\hub_remote.json"
+if (Test-Path $commonRemote) { throw "machine hub_remote.json still exists" }
+if (-not (Test-Path (Join-Path $local "marker"))) { throw "uninstall removed the editor marker" }
 
 Write-Host "Windows custom-dir install/uninstall smoke OK"
