@@ -83,21 +83,25 @@ use_native_dialog = true
 [node name="NewProjectDialog" type="ConfirmationDialog" parent="."]
 unique_name_in_owner = true
 title = "Create new project"
-size = Vector2i(200, 119)
+size = Vector2i(520, 210)
 ok_button_text = "Create"
 dialog_hide_on_ok = false
 
 [node name="NewProjectForm" type="VBoxContainer" parent="NewProjectDialog"]
-offset_left = 1.0
-offset_top = 1.0
-offset_right = 199.0
-offset_bottom = 75.0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 512.0
+offset_bottom = 150.0
 theme_override_constants/separation = 8
 
 [node name="NewProjectNameEdit" type="LineEdit" parent="NewProjectDialog/NewProjectForm"]
 unique_name_in_owner = true
 layout_mode = 2
 placeholder_text = "Project name"
+
+[node name="StarterOption" type="OptionButton" parent="NewProjectDialog/NewProjectForm"]
+unique_name_in_owner = true
+layout_mode = 2
 
 [node name="NewProjectPathRow" type="HBoxContainer" parent="NewProjectDialog/NewProjectForm"]
 layout_mode = 2
