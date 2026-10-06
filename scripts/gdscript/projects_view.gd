@@ -11,6 +11,7 @@ const HubProject = preload("res://scripts/gdscript/hub_project.gd")
 @onready var scan_dialog: FileDialog = %ScanFileDialog
 @onready var new_dialog: ConfirmationDialog = %NewProjectDialog
 @onready var new_name_edit: LineEdit = %NewProjectNameEdit
+@onready var starter_option: OptionButton = %StarterOption
 @onready var new_path_edit: LineEdit = %NewProjectPathEdit
 @onready var browse_new_btn: Button = %BrowseNewProjectBtn
 @onready var new_dir_dialog: FileDialog = %NewProjectDirDialog
@@ -85,7 +86,43 @@ func _build_projects_list(filter_text: String) -> void:
 func _on_new_project() -> void:
 	if new_name_edit.text.is_empty():
 		new_name_edit.text = "New Game"
+	await _fill_starters()
 	new_dialog.popup_centered()
+
+
+func _fill_starters() -> void:
+	starter_option.clear()
+	starter_option.set_meta("starter_names", PackedStringArray([""]))
+	starter_option.add_item("Empty project")
+	var data: Variant = await HubCli.starters_list_async()
+	if typeof(data) != TYPE_DICTIONARY:
+		return
+	var rows: Variant = (data as Dictionary).get("starters", [])
+	if typeof(rows) != TYPE_ARRAY:
+		return
+	var names: PackedStringArray = PackedStringArray([""])
+	for row in rows:
+		if typeof(row) != TYPE_DICTIONARY:
+			continue
+		var starter_name: String = str((row as Dictionary).get("name", "")).strip_edges()
+		if starter_name.is_empty():
+			continue
+		var blurb: String = str((row as Dictionary).get("description", "")).strip_edges()
+		var label := starter_name
+		if not blurb.is_empty():
+			label = "%s. %s" % [starter_name, blurb]
+		starter_option.add_item(label)
+		names.append(starter_name)
+	starter_option.set_meta("starter_names", names)
+	starter_option.select(0)
+
+
+func _selected_starter() -> String:
+	var names: PackedStringArray = starter_option.get_meta("starter_names", PackedStringArray())
+	var idx := starter_option.selected
+	if idx < 0 or idx >= names.size():
+		return ""
+	return names[idx]
 
 
 func _on_new_project_confirmed() -> void:
@@ -94,9 +131,17 @@ func _on_new_project_confirmed() -> void:
 	if dir.is_empty():
 		status.text = "Choose a project folder"
 		return
-	status.text = "Creating…"
+	var starter_name := _selected_starter()
 	_set_action_busy(true)
-	var data: Variant = await HubCli.projects_create_async(dir, project_name)
+	var data: Variant
+	if starter_name.is_empty():
+		status.text = "Creating…"
+		data = await HubCli.projects_create_async(dir, project_name)
+	else:
+		status.text = "Downloading starter…"
+		data = await HubCli.starters_download_async(starter_name, dir)
+		if data != null:
+			data = await HubCli.projects_add_async(dir)
 	_set_action_busy(false)
 	if data == null:
 		status.text = _short_status(HubCli.get_last_error())
@@ -106,7 +151,10 @@ func _on_new_project_confirmed() -> void:
 	new_dialog.hide()
 	HubState.refresh_projects()
 	reload()
-	status.text = "Created %s" % project_name
+	if starter_name.is_empty():
+		status.text = "Created %s" % project_name
+	else:
+		status.text = "Created %s from %s" % [project_name, starter_name]
 
 
 func _on_add() -> void:

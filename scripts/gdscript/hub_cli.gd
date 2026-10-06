@@ -399,6 +399,14 @@ func projects_create_async(path: String, project_name: String = "") -> Variant:
 	return await run_json_async(args)
 
 
+func starters_list_async() -> Variant:
+	return await run_json_async(PackedStringArray(["starters", "list"]))
+
+
+func starters_download_async(starter_name: String, path: String) -> Variant:
+	return await run_json_async(PackedStringArray(["starters", "download", starter_name, "--dir", path]))
+
+
 func projects_remove(path: String) -> Variant:
 	return run_json(PackedStringArray(["projects", "remove", path]))
 
