@@ -22,8 +22,20 @@ local CdnClient = {
 		return ""
 	end,
 
-	latest_path = function(_self, channel)
-		return "/catalog/versions/" .. tostring(channel) .. "/latest.json"
+	is_valid_engine_reference = function(_self, reference)
+		return reference == "blazium-dev" or reference == "blazium_4.8"
+	end,
+
+	latest_path = function(self, channel, reference)
+		local ch = tostring(channel or "")
+		local ref = tostring(reference or "")
+		if ref == "" then
+			return "/catalog/versions/" .. ch .. "/latest.json"
+		end
+		if not self:is_valid_engine_reference(ref) then
+			return ""
+		end
+		return "/catalog/versions/" .. ch .. "/" .. ref .. "/latest.json"
 	end,
 
 	versions_path = function(_self, channel)
@@ -56,8 +68,8 @@ local CdnClient = {
 		return nil
 	end,
 
-	latest = function(self, channel)
-		return self:fetch_json(self:latest_path(channel))
+	latest = function(self, channel, reference)
+		return self:fetch_json(self:latest_path(channel, reference))
 	end,
 
 	versions = function(self, channel)

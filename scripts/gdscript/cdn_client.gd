@@ -86,10 +86,24 @@ static func catalog_channel_alias(channel: String) -> String:
 			return ""
 
 
-static func latest_path(channel: String) -> String:
+static func is_valid_engine_reference(reference: String) -> bool:
+	match reference.strip_edges():
+		"blazium-dev", "blazium_4.8":
+			return true
+		_:
+			return false
+
+
+static func latest_path(channel: String, reference: String = "") -> String:
 	if not HubSanitize.is_valid_channel(channel):
 		return ""
-	return "/catalog/versions/%s/latest.json" % channel.strip_edges().to_lower()
+	var ch := channel.strip_edges().to_lower()
+	var ref := reference.strip_edges()
+	if ref.is_empty():
+		return "/catalog/versions/%s/latest.json" % ch
+	if not is_valid_engine_reference(ref):
+		return ""
+	return "/catalog/versions/%s/%s/latest.json" % [ch, ref]
 
 
 static func versions_path(channel: String) -> String:
@@ -120,8 +134,8 @@ func article_meta_path(slug: String) -> String:
 	return "/articles/%s/meta.json" % slug.strip_edges()
 
 
-func latest(channel: String) -> Variant:
-	var path := latest_path(channel)
+func latest(channel: String, reference: String = "") -> Variant:
+	var path := latest_path(channel, reference)
 	if path.is_empty():
 		_last_error = "invalid channel"
 		return null
@@ -131,7 +145,10 @@ func latest(channel: String) -> Variant:
 	var alias := catalog_channel_alias(channel)
 	if alias.is_empty():
 		return null
-	return await fetch_json("/catalog/versions/%s/latest.json" % alias)
+	var ref := reference.strip_edges()
+	if ref.is_empty():
+		return await fetch_json("/catalog/versions/%s/latest.json" % alias)
+	return await fetch_json("/catalog/versions/%s/%s/latest.json" % [alias, ref])
 
 
 func versions(channel: String) -> Variant:

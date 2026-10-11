@@ -4,6 +4,11 @@ extends AutoworkTest
 func test_005_cdn_paths_and_base() -> void:
 	assert_eq(CdnClient.CDN_BASE, "https://cdn.blazium.app")
 	assert_eq(CdnClient.latest_path("release"), "/catalog/versions/release/latest.json")
+	assert_eq(CdnClient.latest_path("release", "blazium-dev"), "/catalog/versions/release/blazium-dev/latest.json")
+	assert_eq(CdnClient.latest_path("nightly", "blazium_4.8"), "/catalog/versions/nightly/blazium_4.8/latest.json")
+	assert_eq(CdnClient.latest_path("release", "nope"), "")
+	assert_true(CdnClient.is_valid_engine_reference("blazium-dev"))
+	assert_false(CdnClient.is_valid_engine_reference("blazium_dev"))
 	assert_eq(CdnClient.versions_path("nightly"), "/catalog/versions/nightly.json")
 	assert_eq(CdnClient.versions_path("prerelease"), "/catalog/versions/prerelease.json")
 	assert_eq(CdnClient.catalog_channel_alias("prerelease"), "pre-release")
